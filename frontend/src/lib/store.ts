@@ -11,7 +11,14 @@ export const store = configureStore({
     ui: uiReducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(api.middleware),
+    getDefaultMiddleware().concat(
+      () => next => action => {
+        const result = next(action);
+        if (action.type === 'auth/logout') store.dispatch(api.util.resetApiState());
+        return result;
+      },
+      api.middleware
+    ),
 });
 
 setupListeners(store.dispatch);

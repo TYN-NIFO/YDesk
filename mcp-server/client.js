@@ -59,7 +59,7 @@ export class ClaimApiClient {
       throw new Error('Not authenticated. Please call login first.');
     }
 
-    const res = await fetch(`${this.baseUrl}/api/auth/profile/`, {
+    const res = await fetch(`${this.baseUrl}/api/auth/me/`, {
       headers: {
         'Authorization': `Bearer ${this.token}`,
         'Content-Type': 'application/json'

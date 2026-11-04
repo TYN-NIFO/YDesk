@@ -1,5 +1,7 @@
 'use client';
 
+import { Dialog } from "./ui/WorkspaceUI";
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,7 +50,7 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
     if (!data.rejectionReason || data.rejectionReason.trim().length < 10) {
       return;
     }
-    
+
     setIsRejecting(true);
     try {
       await onApprove(claim._id, false, data.notes, data.rejectionReason);
@@ -66,21 +68,13 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div className="mt-3">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Finance Review</h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          </div>
+    <Dialog title="Finance review" description="Review the expense and add a note for the employee." onClose={onClose} busy={isApproving || isRejecting}>
+
+        <div>
+
 
           {/* Claim Details */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
+          <div className="ui-detail-summary bg-gray-50 p-4 rounded-lg mb-4">
             <div className="space-y-2 text-sm">
               <div>
                 <span className="font-medium">Employee:</span> {claim.employeeId?.name || 'Unknown'}
@@ -113,10 +107,10 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Notes (Optional)
               </label>
-              <textarea
+              <textarea aria-label="Notes (Optional)"
                 {...register('notes')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Add any notes about your decision..."
               />
               {errors.notes && (
@@ -130,12 +124,12 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Rejection Reason *
                 </label>
-                <textarea
+                <textarea aria-label="Rejection Reason"
                   {...register('rejectionReason')}
                   rows={4}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                  className={`ui-control ${`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent ${
                     errors.rejectionReason ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                  }`}`}
                   placeholder="Please provide a detailed reason for rejection (minimum 10 characters)..."
                   required
                 />
@@ -155,17 +149,17 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                className="ui-button ui-button-secondary px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
               >
                 Cancel
               </button>
-              
+
               {action === null && (
                 <>
                   <button
                     type="button"
                     onClick={() => setAction('reject')}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                    className="ui-button ui-button-danger px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Reject
@@ -173,7 +167,7 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
                   <button
                     type="button"
                     onClick={() => setAction('approve')}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"
+                    className="ui-button ui-button-primary px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Approve
@@ -185,7 +179,7 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
                 <button
                   type="submit"
                   disabled={isApproving}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                  className="ui-button ui-button-primary px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   {isApproving ? 'Approving...' : 'Confirm Approval'}
@@ -196,7 +190,7 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
                 <button
                   type="submit"
                   disabled={isRejecting || !watchedRejectionReason || watchedRejectionReason.trim().length < 10}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                  className="ui-button ui-button-danger px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   {isRejecting ? 'Rejecting...' : 'Confirm Rejection'}
@@ -210,7 +204,7 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
                 <button
                   type="button"
                   onClick={() => setAction(null)}
-                  className="text-sm text-gray-600 hover:text-gray-800 underline"
+                  className="ui-button ui-button-secondary text-sm text-gray-600 hover:text-gray-800 underline"
                 >
                   ← Back to options
                 </button>
@@ -218,7 +212,7 @@ export default function FinanceApprovalModal({ claim, onClose, onApprove }: Fina
             )}
           </form>
         </div>
-      </div>
-    </div>
+
+    </Dialog>
   );
 }

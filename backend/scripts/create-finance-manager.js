@@ -1,3 +1,4 @@
+import { seedPassword } from './seed-password.js';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import dotenv from 'dotenv';
@@ -27,7 +28,7 @@ const createFinanceManager = async () => {
     const financeManager = new User({
       name: 'Finance Manager',
       email: 'finance@company.com',
-      password: 'finance123',
+      password: seedPassword(),
       role: 'finance_manager',
       department: 'Finance',
       createdBy: '000000000000000000000000' // System created
@@ -36,7 +37,7 @@ const createFinanceManager = async () => {
     await financeManager.save();
     console.log('✅ Created finance manager');
     console.log('Email: finance@company.com');
-    console.log('Password: finance123');
+
 
     console.log('🎉 Finance manager creation completed successfully');
     process.exit(0);

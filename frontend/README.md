@@ -1,5 +1,11 @@
 ## Vercel Deployment via GitHub Actions (Monorepo)
 
+## Workspace UI
+
+Internal screens share the navy/yellow design tokens in `src/app/workspace.css`. Use `PageHeading`, `FormSection`, `Field`, and `Dialog` from `components/ui/WorkspaceUI` for new forms. Form pages use `ui-form-layout` with `ui-form-main` and an optional `ui-summary` sidebar, which stacks below the form on narrow screens.
+
+Use `ui-control` for text inputs/selects, `ui-check` for checkboxes/radios, and `ui-button` with `ui-button-primary`, `ui-button-secondary`, or `ui-button-danger` for actions. Keep green/red for outcomes and validation. Tables use `ui-table`, `ui-table-head`, `ui-table-th`, and `ui-table-td` inside a horizontal overflow container. `Dialog` supplies a responsive portal, focus trapping/restoration, Escape dismissal, and background scroll locking; pass `busy` while a request is running.
+
 This project is deployed from the `frontend/` directory using Vercel CLI in CI.
 
 ### Prerequisites

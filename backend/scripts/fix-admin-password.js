@@ -1,3 +1,4 @@
+import { seedPassword } from './seed-password.js';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
@@ -26,7 +27,7 @@ const fixAdminPassword = async () => {
     console.log(`- Has password hash: ${!!adminUser.passwordHash}`);
 
     // Hash the password properly
-    const passwordHash = bcrypt.hashSync('admin123', 12);
+    const passwordHash = bcrypt.hashSync(seedPassword(), 12);
     
     // Update the admin user with the proper password hash
     await User.findByIdAndUpdate(adminUser._id, { passwordHash });

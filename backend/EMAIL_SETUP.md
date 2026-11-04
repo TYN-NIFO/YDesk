@@ -1,5 +1,21 @@
 # Email Service Setup Guide
 
+## Feedback notifications and weekly summaries
+
+The feedback portal sends submission receipts and status updates through SendGrid or SMTP. Email tests stub both providers and send no real messages. Weekly reports contain aggregate counts only; names, subjects, descriptions, reviewer notes, and attachments are excluded.
+
+Weekly automation is implemented in `.github/workflows/weekly-feedback-summary.yml`, scheduled for Mondays at 09:00 Asia/Kolkata (03:30 UTC). It is disabled unless the repository variable `WEEKLY_SUMMARY_ENABLED` equals `true`. No schedule or mail delivery was activated during local development.
+
+To enable after deployment, configure repository secrets `MONGODB_URI`, `SENDGRID_API_KEY`, and `EMAIL_FROM`, plus repository variable `FRONTEND_URL` pointing to the deployed frontend. The database URI is read from the scheduler's own secrets; it does not inherit the API host's configuration. Confirm the SendGrid sender is verified before enabling. SMTP is also supported by the CLI when its host/user/password/from settings are configured, but the supplied GitHub workflow uses SendGrid.
+
+Recipients must be active accounts with explicit `grievanceAccess: handler` or `summary`; a person's application role alone does not subscribe them. Optional `WEEKLY_SUMMARY_RECIPIENTS` restricts this eligible list to specified comma-separated emails. Set reviewer access using the existing access-management script. Leadership recipients receive counts only, with a link to `/feedback`.
+
+Run `npm run weekly-summary` from `backend` for a dry run against the explicitly configured database. It prints only the reporting week and recipient count. Actual sending requires both `WEEKLY_SUMMARY_ENABLED=true` and `node scripts/weekly-feedback-summary.js --send`. A manual GitHub workflow run defaults to dry-run mode. The reporting period is the last complete Monday–Sunday week in IST, with a separate current-open count.
+
+Successful deliveries are recorded per recipient and reporting week to prevent duplicate sends. Failed deliveries can be retried; successful ones are skipped. If a process stops while a delivery is marked `sending`, inspect provider delivery logs before resetting that entry to `failed`, since the email may already have been accepted.
+
+Local preview runs deliberately skip production environment files and do not configure mail. Checking that an API key exists does not verify sender authorization or inbox delivery. Use a designated test recipient for a separate delivery check before enabling production automation.
+
 ## Overview
 The application supports two email providers:
 1. **SendGrid API** (Recommended for production - more reliable on cloud platforms)

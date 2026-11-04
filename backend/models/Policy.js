@@ -6,6 +6,8 @@ const PolicySchema = new mongoose.Schema({
     required: true,
     default: 'v1.0'
   },
+  categoryDefinitions: { type: [mongoose.Schema.Types.Mixed], default: undefined },
+  exchangeRates: { type: mongoose.Schema.Types.Mixed, default: {} },
   approvalMode: {
     type: String,
     enum: ['both', 'any'],
@@ -37,7 +39,7 @@ const PolicySchema = new mongoose.Schema({
   },
   maxFileSizeMB: {
     type: Number,
-    default: 10
+    default: 4
   },
   payoutChannels: {
     type: [String],

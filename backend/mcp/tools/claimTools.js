@@ -42,7 +42,8 @@ export function registerClaimTools(server, { api }) {
           fileName: z.string().describe('File name including extension, e.g. "hotel-bill.pdf"'),
           mimeType: z.enum(['application/pdf', 'image/jpeg', 'image/png']).describe('File type'),
           base64: z.string().describe('File content, base64-encoded (max 4MB per file)'),
-          lineItemIndex: z.number().int().min(0).default(0).describe('Which line item (0-based) this receipt belongs to')
+          lineItemIndex: z.number().int().min(0).default(0).describe('Which line item (0-based) this receipt belongs to'),
+          label: z.string().default('supporting_doc').describe('Required policy document label, such as airline_invoice')
         })).max(10).optional().describe('Optional receipt files')
       }
     },
@@ -58,7 +59,7 @@ export function registerClaimTools(server, { api }) {
       const fileMapping = {};
       for (const file of attachments) {
         formData.append('files', new Blob([Buffer.from(file.base64, 'base64')], { type: file.mimeType }), file.fileName);
-        fileMapping[file.fileName] = file.lineItemIndex;
+        fileMapping[file.fileName] = { lineItemIndex: file.lineItemIndex, label: file.label };
       }
       formData.append('fileMapping', JSON.stringify(fileMapping));
 

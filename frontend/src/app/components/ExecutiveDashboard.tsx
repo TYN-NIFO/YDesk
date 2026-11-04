@@ -44,7 +44,7 @@ export default function ExecutiveDashboard() {
   const { data: personalClaimStats } = useGetClaimStatsQuery({ scope: 'own' });
   const { data: organizationClaimStats } = useGetClaimStatsQuery({});
   const { data: leavesData, isLoading: leavesLoading } = useGetLeavesQuery({});
-  const claims = claimsData?.claims || [];
+  const claims = useMemo(() => claimsData?.claims || [], [claimsData]);
   const leaves = leavesData?.leaves || [];
   const [logoutMutation] = useLogoutMutation();
 
@@ -153,7 +153,7 @@ export default function ExecutiveDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="ui-panel bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
@@ -169,7 +169,7 @@ export default function ExecutiveDashboard() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowClaimForm(true)}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Claim
@@ -177,7 +177,7 @@ export default function ExecutiveDashboard() {
 
               <button
                 onClick={() => router.push('/submit-leave')}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
               >
                 <Clock className="h-4 w-4 mr-2" />
                 Submit Leave
@@ -185,7 +185,7 @@ export default function ExecutiveDashboard() {
 
               <button
                 onClick={handleLogout}
-                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                className="ui-button ui-button-secondary flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -210,37 +210,37 @@ export default function ExecutiveDashboard() {
                 <nav className="-mb-px flex space-x-8">
                   <button
                     onClick={() => setActiveTab('personal')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'personal'
+                    className={`ui-tab ${`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'personal'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                      }`}`}
                   >
                     Personal View
                   </button>
                   <button
                     onClick={() => setActiveTab('organization')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'organization'
+                    className={`ui-tab ${`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'organization'
                       ? 'border-purple-500 text-purple-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                      }`}`}
                   >
                     Organization View
                   </button>
                   <button
                     onClick={() => setActiveTab('leave-dashboard')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'leave-dashboard'
+                    className={`ui-tab ${`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'leave-dashboard'
                       ? 'border-green-500 text-green-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                      }`}`}
                   >
                     Leave Dashboard
                   </button>
                   <button
                     onClick={() => setActiveTab('travel-guidelines')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'travel-guidelines'
+                    className={`ui-tab ${`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'travel-guidelines'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                      }`}`}
                   >
                     <span className="inline-flex items-center">
                       <Plane className="h-4 w-4 mr-2" />
@@ -249,10 +249,10 @@ export default function ExecutiveDashboard() {
                   </button>
                   <button
                     onClick={() => setActiveTab('holidays')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'holidays'
+                    className={`ui-tab ${`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'holidays'
                       ? 'border-red-500 text-red-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
+                      }`}`}
                   >
                     Holidays
                   </button>
@@ -264,7 +264,7 @@ export default function ExecutiveDashboard() {
               <>
                 {/* Personal Statistics Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-2 bg-blue-100 rounded-lg">
                         <FileText className="h-6 w-6 text-blue-600" />
@@ -276,7 +276,7 @@ export default function ExecutiveDashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-2 bg-yellow-100 rounded-lg">
                         <Clock className="h-6 w-6 text-yellow-600" />
@@ -288,7 +288,7 @@ export default function ExecutiveDashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-2 bg-green-100 rounded-lg">
                         <CheckCircle className="h-6 w-6 text-green-600" />
@@ -300,7 +300,7 @@ export default function ExecutiveDashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-2 bg-red-100 rounded-lg">
                         <AlertCircle className="h-6 w-6 text-red-600" />
@@ -314,7 +314,7 @@ export default function ExecutiveDashboard() {
                 </div>
 
                 {/* Personal Total Amount Card */}
-                <div className="bg-white rounded-lg shadow p-6 mb-8">
+                <div className="ui-panel bg-white rounded-lg shadow p-6 mb-8">
                   <div className="flex items-center">
                     <div className="p-2 bg-green-100 rounded-lg">
                       <DollarSign className="h-6 w-6 text-green-600" />
@@ -329,7 +329,7 @@ export default function ExecutiveDashboard() {
                 </div>
 
                 {/* Personal Claims List */}
-                <div className="bg-white rounded-lg shadow mb-8">
+                <div className="ui-panel bg-white rounded-lg shadow mb-8">
                   <div className="px-6 py-4 border-b border-gray-200">
                     <h2 className="text-lg font-medium text-gray-900">My Claims</h2>
                     <p className="text-sm text-gray-600">View and manage your expense claims</p>
@@ -348,25 +348,25 @@ export default function ExecutiveDashboard() {
                       </div>
                     ) : claims && claims.length > 0 ? (
                       <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
+                        <table className="ui-table min-w-full divide-y divide-gray-200">
+                          <thead className="ui-table-head bg-gray-50">
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Claim ID
                               </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Category
                               </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Amount
                               </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Status
                               </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Date
                               </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
                               </th>
                             </tr>
@@ -374,16 +374,16 @@ export default function ExecutiveDashboard() {
                           <tbody className="bg-white divide-y divide-gray-200">
                             {claims.filter((claim: any) => claim.employeeId?._id === user?._id).map((claim: any) => (
                               <tr key={claim._id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                   {claim._id.slice(-8)}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {claim.category}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   ₹{claim.grandTotal?.toLocaleString() || '0'}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="ui-table-td px-6 py-4 whitespace-nowrap">
                                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${claim.status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
                                     claim.status === 'approved' ? 'bg-green-100 text-green-800' :
                                       claim.status === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -394,10 +394,10 @@ export default function ExecutiveDashboard() {
                                     {claim.status.replace('_', ' ').toUpperCase()}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {new Date(claim.createdAt).toLocaleDateString()}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm font-medium">
                                   <div className="flex space-x-2">
                                     <button
                                       onClick={() => router.push(`/claims/${claim._id}`)}
@@ -438,7 +438,7 @@ export default function ExecutiveDashboard() {
               <>
                 {/* Organization Statistics Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-2 bg-purple-100 rounded-lg">
                         <Users className="h-6 w-6 text-purple-600" />
@@ -450,7 +450,7 @@ export default function ExecutiveDashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-2 bg-yellow-100 rounded-lg">
                         <Clock className="h-6 w-6 text-yellow-600" />
@@ -462,7 +462,7 @@ export default function ExecutiveDashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-2 bg-green-100 rounded-lg">
                         <CheckCircle className="h-6 w-6 text-green-600" />
@@ -474,7 +474,7 @@ export default function ExecutiveDashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-2 bg-red-100 rounded-lg">
                         <AlertCircle className="h-6 w-6 text-red-600" />
@@ -488,7 +488,7 @@ export default function ExecutiveDashboard() {
                 </div>
 
                 {/* Organization Total Amount Card */}
-                <div className="bg-white rounded-lg shadow p-6 mb-8">
+                <div className="ui-panel bg-white rounded-lg shadow p-6 mb-8">
                   <div className="flex items-center">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <DollarSign className="h-6 w-6 text-purple-600" />
@@ -542,7 +542,7 @@ export default function ExecutiveDashboard() {
                 </div>
 
                 {/* Organization Filters + Claims List */}
-                <div className="bg-white rounded-lg shadow mb-8">
+                <div className="ui-panel bg-white rounded-lg shadow mb-8">
                   <div className="px-6 py-4 border-b border-gray-200 space-y-4">
                     <div className="flex justify-between items-center">
                       <div>
@@ -584,7 +584,7 @@ export default function ExecutiveDashboard() {
 
                 {/* Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center mb-4">
                       <BarChart3 className="h-6 w-6 text-blue-600 mr-2" />
                       <h3 className="text-lg font-medium text-gray-900">Analytics</h3>
@@ -592,13 +592,13 @@ export default function ExecutiveDashboard() {
                     <p className="text-gray-600 mb-4">View detailed analytics and reports for the organization</p>
                     <button
                       onClick={() => router.push('/admin')}
-                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                      className="ui-button ui-button-primary w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
                     >
                       View Analytics
                     </button>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="ui-panel bg-white rounded-lg shadow p-6">
                     <div className="flex items-center mb-4">
                       <Users className="h-6 w-6 text-green-600 mr-2" />
                       <h3 className="text-lg font-medium text-gray-900">User Management</h3>
@@ -606,7 +606,7 @@ export default function ExecutiveDashboard() {
                     <p className="text-gray-600 mb-4">Manage users, roles, and permissions across the organization</p>
                     <button
                       onClick={() => router.push('/admin/users')}
-                      className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                      className="ui-button ui-button-primary w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
                     >
                       Manage Users
                     </button>

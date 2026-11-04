@@ -40,21 +40,5 @@ export default function SubmitClaimPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900">Submit Claim</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Submit your expense claim for approval
-            </p>
-          </div>
-          <div className="p-6">
-            <ImprovedClaimForm onClose={handleClose} employeeId={user._id} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="ui-page"><ImprovedClaimForm onClose={handleClose} employeeId={user._id} /></div>;
 }

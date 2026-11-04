@@ -130,7 +130,7 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
         <div className="mt-4 sm:mt-0 flex items-center space-x-3">
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="ui-button ui-button-primary flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             <Plus className="h-4 w-4 mr-2" />
             Request Leave
@@ -141,7 +141,7 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
       {/* Year Summary Cards */}
       {yearSummary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
@@ -157,7 +157,7 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
@@ -173,7 +173,7 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
@@ -189,7 +189,7 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
@@ -208,7 +208,7 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
       )}
 
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-lg shadow border border-gray-200">
+      <div className="ui-panel flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-lg shadow border border-gray-200">
         <div className="flex items-center space-x-4">
           {/* View Mode Toggle */}
           {!forceView && (
@@ -231,7 +231,7 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="ui-control border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
             {Array.from({ length: 12 }, (_, i) => (
               <option key={i + 1} value={i + 1}>
@@ -243,7 +243,7 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="ui-control border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
             {Array.from({ length: 11 }, (_, i) => currentYear - 5 + i).map(year => (
               <option key={year} value={year}>{year}</option>
@@ -342,7 +342,7 @@ function EmployeeCalendarView({ year, month, leaves, holidays, isLoading, curren
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="ui-panel bg-white rounded-lg shadow p-6">
         <div className="flex justify-center items-center py-12">
           <LoadingSpinner />
         </div>
@@ -351,12 +351,12 @@ function EmployeeCalendarView({ year, month, leaves, holidays, isLoading, curren
   }
 
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-lg">
       <div className="px-4 py-5 sm:px-6">
         <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center space-x-2">
           <button
             onClick={onPrevMonth}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            className="ui-button ui-button-secondary p-1 hover:bg-gray-100 rounded-full transition-colors"
             title="Previous Month"
           >
             <ChevronLeft className="h-5 w-5 text-gray-600" />
@@ -364,7 +364,7 @@ function EmployeeCalendarView({ year, month, leaves, holidays, isLoading, curren
           <span>{new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
           <button
             onClick={onNextMonth}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            className="ui-button ui-button-secondary p-1 hover:bg-gray-100 rounded-full transition-colors"
             title="Next Month"
           >
             <ChevronRight className="h-5 w-5 text-gray-600" />
@@ -599,7 +599,7 @@ function EmployeeListView({ year, month, leaves, isLoading, onEdit, onDelete, is
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="ui-panel bg-white rounded-lg shadow p-6">
         <div className="flex justify-center items-center py-12">
           <LoadingSpinner />
         </div>
@@ -608,7 +608,7 @@ function EmployeeListView({ year, month, leaves, isLoading, onEdit, onDelete, is
   }
 
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-md">
+    <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-md">
       <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
         <h3 className="text-lg leading-6 font-medium text-gray-900">
           My Leave Requests - {monthName}
@@ -694,7 +694,7 @@ function EmployeeListView({ year, month, leaves, isLoading, onEdit, onDelete, is
                     <button
                       onClick={() => onDelete(leave._id)}
                       disabled={isDeleting}
-                      className="flex items-center px-3 py-1 text-red-600 hover:text-red-800 text-sm font-medium border border-red-200 rounded-md hover:bg-red-50 transition-colors disabled:opacity-50"
+                      className="ui-button ui-button-secondary flex items-center px-3 py-1 text-red-600 hover:text-red-800 text-sm font-medium border border-red-200 rounded-md hover:bg-red-50 transition-colors disabled:opacity-50"
                     >
                       <Trash2 className="h-3 w-3 mr-1" />
                       Delete

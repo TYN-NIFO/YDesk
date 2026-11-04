@@ -1,3 +1,4 @@
+import { seedPassword } from './seed-password.js';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import dotenv from 'dotenv';
@@ -35,7 +36,7 @@ const assignSupervisors = async () => {
       const supervisor = new User({
         name: 'Test Supervisor',
         email: 'supervisor@company.com',
-        password: 'supervisor123',
+        password: seedPassword(),
         role: 'supervisor',
         supervisorLevel: 1,
         department: 'IT',
@@ -53,7 +54,7 @@ const assignSupervisors = async () => {
       const employee = new User({
         name: 'Test Employee',
         email: 'employee@company.com',
-        password: 'employee123',
+        password: seedPassword(),
         role: 'employee',
         department: 'IT',
         createdBy: supervisors[0]?._id || '000000000000000000000000'

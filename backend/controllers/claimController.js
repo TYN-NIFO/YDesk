@@ -2,7 +2,11 @@ import Claim from '../models/Claim.js';
 import User from '../models/User.js';
 import Policy from '../models/Policy.js';
 import AuditLog from '../models/AuditLog.js';
+import storageService from '../services/storage.js';
+import { pipeline } from 'node:stream/promises';
+import { canAccessClaim } from '../middleware/rbac.js';
 import { validationResult } from 'express-validator';
+const debug = (...args) => { if (process.env.DEBUG_CLAIMS === 'true') console.log(...args); };
 
 // Create audit log entry
 const createAuditLog = async (userId, action, resource, details = {}) => {
@@ -25,7 +29,7 @@ const getClaims = async (req, res) => {
     const user = req.user;
     const filter = {};
 
-    console.log('🔍 getClaims called with:', {
+    debug('🔍 getClaims called with:', {
       userRole: user.role,
       userEmail: user.email,
       queryParams: req.query
@@ -38,10 +42,10 @@ const getClaims = async (req, res) => {
     // Role-based filtering
     if (user.role === 'employee') {
       filter.employeeId = user._id;
-      console.log('👤 Employee filter:', filter);
+      debug('👤 Employee filter:', filter);
     }
     // Finance managers, executives, and admins see ALL claims (no filter applied)
-    console.log('🔍 Final filter:', filter);
+    debug('🔍 Final filter:', filter);
 
     const claims = await Claim.find(filter)
       .populate('employeeId', 'name email')
@@ -53,7 +57,7 @@ const getClaims = async (req, res) => {
 
     const count = await Claim.countDocuments(filter);
 
-    console.log('📊 Results:', {
+    debug('📊 Results:', {
       claimsFound: claims.length,
       totalCount: count,
       userRole: user.role
@@ -158,42 +162,23 @@ const createClaim = async (req, res) => {
       advances,
       lineItems,
       grandTotal,
-      netPayable
+      netPayable,
+      policyVersion: req.body.policyVersion,
+      violations: req.body.violations,
+      totalsByHead: req.body.totalsByHead
       // Status will be set based on user role below
     };
 
-    console.log('🔍 User creating claim:', {
+    debug('🔍 User creating claim:', {
       userId: user._id,
       userEmail: user.email,
       userRole: user.role
     });
 
-    // Set status based on user role
-    if (user.email === 'finance@theyellow.network') {
-      console.log('🔧 Setting up finance manager claim with finance_approved status');
-      claimData.status = 'finance_approved';
-      claimData.financeApproval = {
-        status: 'approved',
-        approvedBy: user._id,
-        approvedAt: new Date(),
-        notes: 'Auto-approved as created by finance manager'
-      };
-      console.log('✅ Claim data after finance manager setup:', {
-        status: claimData.status,
-        financeApproval: claimData.financeApproval
-      });
-    }
-    // Special handling for executive (gg) claims
-    else if (user.email === 'gg@theyellownetwork.com') {
-      claimData.status = 'done';
-    }
-    // Default status for all other users
-    else {
-      claimData.status = 'submitted';
-    }
+    claimData.status = 'submitted';
 
     // Create claim with final data
-    console.log('📝 Final claim data before save:', {
+    debug('📝 Final claim data before save:', {
       status: claimData.status,
       financeApproval: claimData.financeApproval,
       executiveApproval: claimData.executiveApproval,
@@ -206,12 +191,12 @@ const createClaim = async (req, res) => {
 
     const claim = new Claim(claimData);
 
-    console.log('📝 Claim instance before save:', {
+    debug('📝 Claim instance before save:', {
       status: claim.status,
       financeApproval: claim.financeApproval,
     });
     await claim.save();
-    console.log('✅ Claim after save:', {
+    debug('✅ Claim after save:', {
       status: claim.status,
       financeApproval: claim.financeApproval,
       _id: claim._id
@@ -240,122 +225,51 @@ const createClaim = async (req, res) => {
 const financeApprove = async (req, res) => {
   try {
     const { action, notes, reason } = req.body;
-    const user = req.user;
-    const claim = req.claim;
-
-    console.log('🔍 financeApprove called with:', {
-      action,
-      notes,
-      userRole: user.role,
-      claimId: claim._id,
-      claimStatus: claim.status
-    });
-
-    if (user.role !== 'finance_manager') {
-      return res.status(403).json({ error: 'Only finance managers can approve claims' });
-    }
-
-    // Check if claim is ready for finance approval (FIRST APPROVAL)
-    if (claim.status !== 'submitted') {
-      return res.status(400).json({ error: 'Claim not ready for finance approval' });
-    }
-
-    if (action === 'approve') {
-      claim.status = 'finance_approved';
-      claim.financeApproval = {
-        status: 'approved',
-        approvedBy: user._id,
-        approvedAt: new Date(),
-        notes: notes || ''
-      };
-    } else if (action === 'reject') {
-      claim.status = 'rejected';
-      claim.financeApproval = {
-        status: 'rejected',
-        approvedBy: user._id,
-        approvedAt: new Date(),
-        reason: reason || notes || 'Rejected by finance manager',
-        notes: notes || ''
-      };
-    }
-
-    await claim.save();
-
-    console.log('✅ Finance claim updated successfully:', {
-      claimId: claim._id,
-      newStatus: claim.status,
-      financeApproval: claim.financeApproval
-    });
-
-    // Create audit log
-    await createAuditLog(user._id, 'FINANCE_APPROVE', 'CLAIM', {
-      claimId: claim._id,
-      action
-    });
-
-    res.json(claim);
+    const { user, claim } = req;
+    if (!['finance_manager', 'admin'].includes(user.role)) return res.status(403).json({ error: 'Finance or administrator access required' });
+    if (!['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'Invalid approval action' });
+    if (claim.employeeId.toString() === user._id.toString()) return res.status(403).json({ error: 'Another approver must review your claim' });
+    if (claim.status !== 'submitted') return res.status(400).json({ error: 'Claim is not ready for finance approval' });
+    const saved = await Claim.findOneAndUpdate(
+      { _id: claim._id, status: 'submitted', updatedAt: claim.updatedAt },
+      { $set: {
+        status: action === 'approve' ? 'finance_approved' : 'rejected',
+        financeApproval: { status: action === 'approve' ? 'approved' : 'rejected', approvedBy: user._id, approvedAt: new Date(), notes: notes || '', reason: action === 'reject' ? reason || notes || 'Rejected by reviewer' : undefined }
+      } },
+      { new: true, runValidators: true }
+    );
+    if (!saved) return res.status(409).json({ error: 'Claim changed. Refresh before approving.' });
+    await createAuditLog(user._id, 'FINANCE_APPROVE', 'CLAIM', { claimId: saved._id, action });
+    res.json(saved);
   } catch (error) {
-    console.error('Finance approve error:', error);
-    res.status(500).json({ error: 'Failed to approve claim' });
+    console.error('Finance approval failed:', error);
+    res.status(500).json({ error: 'Failed to process finance review' });
   }
 };
 
-// Mark claim as paid (AFTER FINANCE APPROVAL)
 const markAsPaid = async (req, res) => {
   try {
-    const { channel } = req.body;
-    const user = req.user;
-    const claim = req.claim;
-
-    console.log('🔍 markAsPaid called with:', {
-      channel,
-      userRole: user.role,
-      claimStatus: claim.status
-    });
-
-    if (user.role !== 'finance_manager' && user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only finance managers can mark claims as paid' });
-    }
-
-    // Check if claim is ready for payment (AFTER FINANCE APPROVAL)
-    if (claim.status !== 'finance_approved') {
-      return res.status(400).json({ error: 'Claim must be finance approved before marking as paid' });
-    }
-
-    const policy = await Policy.findOne();
-    if (!policy) {
-      return res.status(500).json({ error: 'System policy not configured' });
-    }
-
-    if (!policy.payoutChannels.includes(channel)) {
-      return res.status(400).json({ error: 'Invalid payout channel' });
-    }
-
-    claim.payment = {
-      paidBy: user._id,
-      paidAt: new Date(),
-      channel: channel || 'manual'
-    };
-    claim.status = 'paid';
-
-    // await claim.addTimelineEntry(user._id, 'PAID', `Marked as paid via ${channel} by ${user.name}`);
-    await claim.save();
-
-    // Create audit log
-    await createAuditLog(user._id, 'MARK_PAID', 'CLAIM', {
-      claimId: claim._id,
-      channel
-    });
-
-    console.log('✅ Claim marked as paid successfully:', {
-      claimId: claim._id,
-      channel,
-      paidBy: user.name
-    });
-
-    res.json(claim);
+    const { channel, reference } = req.body;
+    const { user, claim } = req;
+    if (!['finance_manager', 'admin'].includes(user.role)) return res.status(403).json({ error: 'Finance or administrator access required' });
+    if (claim.status !== 'finance_approved') return res.status(400).json({ error: 'Claim must be finance approved before marking as paid' });
+    const policy = await Policy.findOne().sort({ createdAt: -1 });
+    if (!policy) return res.status(500).json({ error: 'System policy not configured' });
+    if (!policy.payoutChannels.includes(channel)) return res.status(400).json({ error: 'Invalid payout channel' });
+    const saved = await Claim.findOneAndUpdate(
+      { _id: claim._id, status: 'finance_approved', updatedAt: claim.updatedAt },
+      { $set: {
+        status: 'paid',
+        payment: { paidBy: user._id, paidAt: new Date(), channel, reference: typeof reference === 'string' ? reference.trim() : '' },
+        attachments: claim.attachments
+      } },
+      { new: true, runValidators: true }
+    );
+    if (!saved) return res.status(409).json({ error: 'Claim changed. Refresh before marking payment.' });
+    await createAuditLog(user._id, 'MARK_PAID', 'CLAIM', { claimId: saved._id, channel, reference });
+    res.json(saved);
   } catch (error) {
-    console.error('❌ Mark as paid error:', error);
+    console.error('Mark payment failed:', error);
     res.status(500).json({ error: 'Failed to mark claim as paid' });
   }
 };
@@ -370,7 +284,7 @@ const uploadAttachment = async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const policy = await Policy.findOne();
+    const policy = await Policy.findOne().sort({ createdAt: -1 });
     if (!policy) {
       return res.status(500).json({ error: 'System policy not configured' });
     }
@@ -456,18 +370,24 @@ const downloadProxy = async (req, res) => {
     if (parsedUrl.hostname !== `${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com`) {
       return res.status(403).json({ error: 'URL not allowed' });
     }
-    const s3Res = await fetch(url);
-    if (!s3Res.ok) return res.status(s3Res.status).json({ error: 'S3 fetch failed' });
-    const contentType = s3Res.headers.get('content-type') || 'application/octet-stream';
-    const safe = (filename || 'download').replace(/[^\w. -]/g, '_');
-    res.setHeader('Content-Type', contentType);
+    const storageKey = decodeURIComponent(parsedUrl.pathname.slice(1));
+    const claim = await Claim.findOne({ $or: [
+      { 'attachments.storageKey': storageKey },
+      { 'lineItems.attachments.storageKey': storageKey }
+    ] });
+    if (!claim) return res.status(404).json({ error: 'Attachment not found' });
+    let allowed = false;
+    await canAccessClaim({ ...req, params: { id: claim._id }, user: req.user }, res, () => { allowed = true; });
+    if (!allowed) return;
+    const file = await storageService.get(storageKey);
+    const safe = String(filename || 'download').replace(/[^\\w. -]/g, '_');
+    res.setHeader('Content-Type', file.contentType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${safe}"`);
-    const reader = s3Res.body.getReader();
-    const pump = async () => { const {done,value} = await reader.read(); if(done){res.end();return;} res.write(Buffer.from(value)); return pump(); };
-    await pump();
+    res.setHeader('Cache-Control', 'private, no-store');
+    await pipeline(file.body, res);
   } catch (error) {
     console.error('Download proxy error:', error);
-    res.status(500).json({ error: 'Download failed' });
+    if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
   }
 };
 

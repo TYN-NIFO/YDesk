@@ -1,10 +1,10 @@
-import { api } from './api';
 import { store } from './store';
 import { setTokens, logout } from './slices/authSlice';
 
 class AuthService {
   private refreshPromise: Promise<any> | null = null;
   private isRefreshing = false;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Get access token from store
   getAccessToken(): string | null {
@@ -78,6 +78,7 @@ class AuthService {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
+        signal: AbortSignal.timeout(8000),
       });
 
       if (!response.ok) {
@@ -93,6 +94,7 @@ class AuthService {
         message: data.message
       }));
 
+      this.setupAutoRefresh();
       return data.accessToken;
     } catch (error) {
       console.error('Token refresh error:', error);
@@ -120,6 +122,7 @@ class AuthService {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      if (this.refreshTimer) clearTimeout(this.refreshTimer);
       // Clear auth state regardless of API call success
       store.dispatch(logout());
     }
@@ -160,6 +163,7 @@ class AuthService {
 
   // Auto-refresh token before expiration
   setupAutoRefresh() {
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
     const token = this.getAccessToken();
     if (!token) return;
 
@@ -171,7 +175,7 @@ class AuthService {
     const now = Date.now();
 
     if (refreshTime > now) {
-      setTimeout(() => {
+      this.refreshTimer = setTimeout(() => {
         this.refreshToken();
       }, refreshTime - now);
     } else {

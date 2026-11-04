@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useGetPolicyQuery, useUpdatePolicyMutation } from '@/lib/api';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PageHeading, FormSection, Field } from './ui/WorkspaceUI';
+import { Tags } from 'lucide-react';
 import { categoryMaster, Category, SubCategory } from '@/lib/categoryMaster';
 
 interface CategoryManagerProps {
@@ -11,7 +14,10 @@ interface CategoryManagerProps {
 }
 
 export default function CategoryManager({ categories = categoryMaster, onSave }: CategoryManagerProps) {
+  const { data: policy } = useGetPolicyQuery({});
+  const [savePolicy, { isLoading: saving }] = useUpdatePolicyMutation();
   const [localCategories, setLocalCategories] = useState<Category[]>(categories);
+  useEffect(() => { if (policy?.categoryDefinitions) setLocalCategories(policy.categoryDefinitions); }, [policy]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', subCategories: [{ name: '', itc: '' }] });
 
@@ -92,190 +98,36 @@ export default function CategoryManager({ categories = categoryMaster, onSave }:
     );
   };
 
-  const handleSaveAll = () => {
-    if (onSave) {
-      onSave(localCategories);
+  const handleSaveAll = async () => {
+    if (!policy || saving) return;
+    if (!localCategories.length || localCategories.some(category => !category.name.trim() || !category.subCategories.length || category.subCategories.some(sub => !sub.name.trim()))) {
+      toast.error('Every category needs a name and at least one named subcategory');
+      return;
     }
-    toast.success('All changes saved successfully');
+    try {
+      const { _id, createdAt, updatedAt, __v, updatedBy, ...data } = policy;
+      await savePolicy({ ...data, maxFileSizeMB: Math.min(data.maxFileSizeMB || 4, 4), version: new Date().toISOString(), categoryDefinitions: localCategories, claimCategories: localCategories.map(category => category.name) }).unwrap();
+      onSave?.(localCategories);
+      toast.success('Categories saved');
+    } catch (error: any) { toast.error(error.data?.error || 'Could not save categories'); }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Add New Category */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Category</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category Name
-            </label>
-            <input
-              type="text"
-              value={newCategory.name}
-              onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter category name"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sub Categories
-            </label>
-            <div className="space-y-2">
-              {newCategory.subCategories.map((sub, index) => (
-                <div key={index} className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={sub.name}
-                    onChange={(e) => {
-                      const updated = [...newCategory.subCategories];
-                      updated[index] = { ...updated[index], name: e.target.value };
-                      setNewCategory(prev => ({ ...prev, subCategories: updated }));
-                    }}
-                    className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter sub-category name"
-                  />
-                  <input
-                    type="text"
-                    value={sub.itc}
-                    onChange={(e) => {
-                      const updated = [...newCategory.subCategories];
-                      updated[index] = { ...updated[index], itc: e.target.value };
-                      setNewCategory(prev => ({ ...prev, subCategories: updated }));
-                    }}
-                    className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="ITC notes (optional)"
-                  />
-                  {newCategory.subCategories.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updated = newCategory.subCategories.filter((_, i) => i !== index);
-                        setNewCategory(prev => ({ ...prev, subCategories: updated }));
-                      }}
-                      className="px-3 py-3 text-red-600 hover:text-red-800"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setNewCategory(prev => ({ 
-                  ...prev, 
-                  subCategories: [...prev.subCategories, { name: '', itc: '' }] 
-                }))}
-                className="flex items-center text-sm text-blue-600 hover:text-blue-800"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Sub Category
-              </button>
-            </div>
-          </div>
-          
-          <button
-            type="button"
-            onClick={handleAddCategory}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Category
-          </button>
-        </div>
+  return <div>
+    <PageHeading title="Expense categories" description="Organize the categories and subcategories your team can claim against." icon={Tags} actions={<button type="button" className="ui-button ui-button-primary" onClick={handleSaveAll} disabled={saving || !policy}><Save size={16} />{saving ? 'Saving categories…' : 'Save all categories'}</button>} />
+    <div className="ui-form-layout">
+      <div className="ui-form-main">
+        <FormSection title="Available categories" description="Edit names and subcategories, then save all changes to publish them.">
+          <div className="space-y-5">{localCategories.map((category, categoryIndex) => <div className="ui-expense-item" key={categoryIndex}>
+            <div className="flex items-end gap-3 mb-5"><div className="flex-1"><Field label="Category name" htmlFor={`category-${categoryIndex}`}><input id={`category-${categoryIndex}`} className="ui-control" value={category.name} onChange={event => setLocalCategories(previous => previous.map((entry, position) => position === categoryIndex ? { ...entry, name: event.target.value } : entry))} /></Field></div><button type="button" className="ui-icon-button" aria-label={`Delete category ${category.name}`} onClick={() => handleDeleteCategory(category.name)}><Trash2 size={17} /></button></div>
+            <p className="ui-label mb-3">Subcategories</p><div className="space-y-3">{category.subCategories.map((sub, subIndex) => <div key={subIndex} className="flex items-start gap-2"><div className="grid sm:grid-cols-2 gap-3 flex-1"><input className="ui-control" aria-label={`Subcategory ${subIndex + 1} in ${category.name}`} value={sub.name} placeholder="Subcategory name" onChange={event => handleUpdateSubCategory(category.name, subIndex, 'name', event.target.value)} /><input className="ui-control" aria-label={`Tax credit note for ${sub.name || 'subcategory'}`} value={sub.itc || ''} placeholder="Tax credit note (optional)" onChange={event => handleUpdateSubCategory(category.name, subIndex, 'itc', event.target.value)} /></div><button type="button" className="ui-icon-button mt-1" aria-label={`Remove ${sub.name || 'subcategory'}`} onClick={() => handleRemoveSubCategory(category.name, subIndex)}><X size={15} /></button></div>)}</div><button type="button" className="ui-button ui-button-secondary mt-4" onClick={() => handleAddSubCategory(category.name)}><Plus size={14} />Add subcategory</button>
+          </div>)}</div>
+        </FormSection>
       </div>
-
-      {/* Existing Categories */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Existing Categories</h3>
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save All Changes
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          {localCategories.map((category) => (
-            <div key={category.name} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex justify-between items-start mb-4">
-                {editingId === category.name ? (
-                  <input
-                    type="text"
-                    value={category.name}
-                    onChange={(e) => handleSaveCategory(category.name, { name: e.target.value })}
-                    className="text-lg font-medium text-gray-900 border border-gray-300 rounded px-2 py-1"
-                  />
-                ) : (
-                  <h4 className="text-lg font-medium text-gray-900">{category.name}</h4>
-                )}
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => handleEditCategory(category.name)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCategory(category.name)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sub Categories
-                </label>
-                <div className="space-y-2">
-                  {category.subCategories.map((sub, index) => (
-                    <div key={index} className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={sub.name}
-                        onChange={(e) => handleUpdateSubCategory(category.name, index, 'name', e.target.value)}
-                        className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Sub-category name"
-                      />
-                      <input
-                        type="text"
-                        value={sub.itc || ''}
-                        onChange={(e) => handleUpdateSubCategory(category.name, index, 'itc', e.target.value)}
-                        className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="ITC notes (optional)"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSubCategory(category.name, index)}
-                        className="px-3 py-2 text-red-600 hover:text-red-800"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => handleAddSubCategory(category.name)}
-                    className="flex items-center text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Sub Category
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <aside className="ui-summary"><h2 className="ui-summary-heading">Add a category</h2><div className="ui-summary-content space-y-4">
+        <Field label="Category name" htmlFor="new-category"><input id="new-category" className="ui-control" value={newCategory.name} onChange={event => setNewCategory(previous => ({ ...previous, name: event.target.value }))} placeholder="For example, Client travel" /></Field>
+        <p className="ui-label">Subcategories</p>{newCategory.subCategories.map((sub, index) => <input className="ui-control" key={index} value={sub.name} aria-label={`New subcategory ${index + 1}`} placeholder="For example, Taxi" onChange={event => setNewCategory(previous => ({ ...previous, subCategories: previous.subCategories.map((entry, position) => position === index ? { ...entry, name: event.target.value } : entry) }))} />)}
+        <button type="button" className="ui-back-link" onClick={() => setNewCategory(previous => ({ ...previous, subCategories: [...previous.subCategories, { name: '', itc: '' }] }))}><Plus size={14} />Another subcategory</button><button type="button" className="ui-button ui-button-secondary w-full" onClick={handleAddCategory}><Plus size={15} />Add category</button>
+      </div><div className="ui-summary-help border-t border-gray-200"><h3>{localCategories.length} categories</h3><p>New categories stay in your draft until you select Save all categories.</p></div></aside>
     </div>
-  );
+  </div>;
 }

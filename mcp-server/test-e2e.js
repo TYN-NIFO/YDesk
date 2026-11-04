@@ -4,7 +4,8 @@ import { registerAuthTools } from './tools/authTools.js';
 import { registerPolicyTools } from './tools/policyTools.js';
 import { registerClaimTools } from './tools/claimTools.js';
 
-const API_BASE_URL = 'https://internaltyn.onrender.com';
+const API_BASE_URL = process.env.API_BASE_URL;
+if (!API_BASE_URL || !process.env.TEST_EMPLOYEE_PASSWORD || !process.env.TEST_FINANCE_PASSWORD) throw new Error('Configure an isolated API_BASE_URL, TEST_EMPLOYEE_PASSWORD and TEST_FINANCE_PASSWORD before running this mutating test');
 const RECEIPT_IMAGE = 'C:\\Users\\ravin\\Downloads\\image (7).png';
 
 async function runE2ETest() {
@@ -37,7 +38,7 @@ async function runE2ETest() {
   console.log('--- [TEST 1] Employee Login (test@theyellow.network) ---');
   const empLoginRes = await registeredTools.get('login')({
     email: 'test@theyellow.network',
-    password: 'TYN@123'
+    password: process.env.TEST_EMPLOYEE_PASSWORD
   });
   console.log(empLoginRes.content[0].text);
   if (empLoginRes.isError) throw new Error('Employee login failed');
@@ -115,7 +116,7 @@ async function runE2ETest() {
   console.log('--- [TEST 6] Finance Manager Login (testing@theyellownetwork.in) ---');
   const financeLoginRes = await registeredTools.get('login')({
     email: 'testing@theyellownetwork.in',
-    password: 'TYN@123'
+    password: process.env.TEST_FINANCE_PASSWORD
   });
   console.log(financeLoginRes.content[0].text);
   if (financeLoginRes.isError) throw new Error('Finance login failed');

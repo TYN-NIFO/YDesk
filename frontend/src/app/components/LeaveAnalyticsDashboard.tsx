@@ -137,7 +137,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
       <div className="space-y-6">
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
@@ -155,7 +155,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
@@ -173,7 +173,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
@@ -191,7 +191,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
@@ -214,49 +214,49 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
 
         {/* Leave Breakdown Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Planned Leave</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">Leave</span>
             </div>
             <div className="mt-2 text-2xl font-semibold text-gray-900">{plannedDays.toFixed(1)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Unplanned Leave</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800">Leave</span>
             </div>
             <div className="mt-2 text-2xl font-semibold text-gray-900">{unplannedDays.toFixed(1)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Permission</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Leave-ish</span>
             </div>
             <div className="mt-2 text-2xl font-semibold text-gray-900">{permissionDays.toFixed(1)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">WFH</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Not Leave</span>
             </div>
             <div className="mt-2 text-2xl font-semibold text-gray-900">{wfhDays.toFixed(1)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Business Trip</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">Not Leave</span>
             </div>
             <div className="mt-2 text-2xl font-semibold text-gray-900">{businessTripDays.toFixed(1)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">OD</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">Not Leave</span>
             </div>
             <div className="mt-2 text-2xl font-semibold text-gray-900">{odDays.toFixed(1)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Flexi</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-pink-100 text-pink-800">Not Leave</span>
@@ -266,7 +266,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
         </div>
 
         {/* Today's Status */}
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+        <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Today's Leave Status</h3>
           {todayLoading ? (
             <div className="flex justify-center py-4">
@@ -277,7 +277,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {todayEmployees.map((emp: any, index: number) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="ui-detail-summary flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                   <div className="flex-shrink-0">
                     <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
                       <span className="text-xs font-medium text-gray-700">
@@ -313,7 +313,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
     if (!summary) return null;
 
     return (
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-md">
         <div className="px-4 py-5 sm:px-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Employee Leave Summary</h3>
           <p className="mt-1 text-sm text-gray-500">
@@ -446,7 +446,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
     };
 
     return (
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Leave Calendar</h3>
           <p className="mt-1 text-sm text-gray-500">
@@ -563,7 +563,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
 
           {/* Leave Summary for Selected Period */}
           {leaveData?.leaves && leaveData.leaves.length > 0 && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="ui-detail-summary mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h4 className="text-sm font-medium text-gray-900 mb-3">
                 Leave Summary for {new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </h4>
@@ -605,7 +605,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
           <select
             value={selectedMonth || ''}
             onChange={(e) => setSelectedMonth(e.target.value ? parseInt(e.target.value) : null)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 bg-white"
+            className="ui-control border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 bg-white"
           >
             <option value="">All Year</option>
             {Array.from({ length: 12 }, (_, i) => (
@@ -619,7 +619,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="ui-control border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
             {Array.from({ length: 11 }, (_, i) => currentYear - 5 + i).map(year => (
               <option key={year} value={year}>{year}</option>
@@ -639,10 +639,10 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
             <button
               key={tab.key}
               onClick={() => setViewType(tab.key as any)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${viewType === tab.key
+              className={`ui-tab ${`py-2 px-1 border-b-2 font-medium text-sm ${viewType === tab.key
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                }`}`}
             >
               {tab.label}
             </button>

@@ -1,3 +1,4 @@
+import { seedPassword } from './seed-password.js';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
@@ -5,13 +6,13 @@ import User from '../models/User.js';
 
 dotenv.config({ path: './config.env' });
 
-const EMPLOYEE_PASSWORD = 'TYN@123';
+const EMPLOYEE_PASSWORD = seedPassword('EMPLOYEE_PASSWORD');
 const ADMIN_EMAIL = 'admin@theyellow.network';
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_PASSWORD = seedPassword('ADMIN_PASSWORD');
 const SUPERVISOR_EMAIL = 'supervisor@theyellow.network';
-const SUPERVISOR_PASSWORD = 'supervisor123';
+const SUPERVISOR_PASSWORD = seedPassword('SUPERVISOR_PASSWORD');
 const FINANCE_EMAIL = 'finance@theyellow.network';
-const FINANCE_PASSWORD = 'finance123';
+const FINANCE_PASSWORD = seedPassword('FINANCE_PASSWORD');
 
 const employees = [
   { name: 'Ganapathy Gangadharan', department: 'CEO', phone: '7358295305', email: 'gg@theyellownetwork.com', joinedOn: '2/22/2023' },

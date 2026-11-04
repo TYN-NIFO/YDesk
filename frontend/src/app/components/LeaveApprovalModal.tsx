@@ -1,5 +1,7 @@
 'use client';
 
+import { Dialog } from "./ui/WorkspaceUI";
+
 import { useState } from 'react';
 import { useApproveLeaveMutation } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -70,27 +72,14 @@ export default function LeaveApprovalModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
-        <div className="mt-3">
+    <Dialog title="Review time-off request" description="Check the requested dates and add your decision below." onClose={onClose} busy={isLoading}>
+
+        <div>
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900">
-              Leave Approval - {leave.leaveId}
-            </h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-              disabled={isLoading}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+
 
           {/* Leave Details */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <div className="ui-detail-summary bg-gray-50 p-4 rounded-lg mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Employee</p>
@@ -156,7 +145,7 @@ export default function LeaveApprovalModal({
                     value="approve"
                     checked={action === 'approve'}
                     onChange={(e) => setAction(e.target.value as 'approve' | 'reject')}
-                    className="mr-2 text-green-600 focus:ring-green-500"
+                    className="ui-check mr-2 text-green-600 focus:ring-green-500"
                     disabled={isLoading}
                   />
                   <span className="text-sm text-gray-900">Approve</span>
@@ -167,7 +156,7 @@ export default function LeaveApprovalModal({
                     value="reject"
                     checked={action === 'reject'}
                     onChange={(e) => setAction(e.target.value as 'approve' | 'reject')}
-                    className="mr-2 text-red-600 focus:ring-red-500"
+                    className="ui-check mr-2 text-red-600 focus:ring-red-500"
                     disabled={isLoading}
                   />
                   <span className="text-sm text-gray-900">Reject</span>
@@ -186,7 +175,7 @@ export default function LeaveApprovalModal({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add any notes for the employee..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isLoading}
               />
             </div>
@@ -203,7 +192,7 @@ export default function LeaveApprovalModal({
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="Please provide a reason for rejection..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                   disabled={isLoading}
                   required
                 />
@@ -216,17 +205,17 @@ export default function LeaveApprovalModal({
                 type="button"
                 onClick={onClose}
                 disabled={isLoading}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+                className="ui-button ui-button-secondary px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading || (action === 'reject' && !rejectionReason.trim())}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${action === 'approve'
-                  ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-                  : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                  }`}
+                className={`ui-button ${`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${action === 'approve'
+                  ? 'ui-button-primary bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                  : 'ui-button-danger bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                  }`}`}
               >
                 {isLoading ? (
                   <span className="flex items-center">
@@ -243,7 +232,7 @@ export default function LeaveApprovalModal({
             </div>
           </form>
         </div>
-      </div>
-    </div>
+
+    </Dialog>
   );
 }

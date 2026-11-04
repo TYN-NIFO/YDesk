@@ -1,3 +1,4 @@
+import { seedPassword } from './seed-password.js';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import dotenv from 'dotenv';
@@ -21,7 +22,7 @@ const createCEOCTO = async () => {
       const tempUser = new User({
         name: 'Velan',
         email: 'velan@theyellow.network',
-        password: 'velan123',
+        password: seedPassword(),
         role: 'admin', // Give admin role for full access
         department: 'Executive',
         createdBy: '000000000000000000000000' // Temporary ID
@@ -44,7 +45,7 @@ const createCEOCTO = async () => {
       const tempUser = new User({
         name: 'GG',
         email: 'gg@theyellownetwork.com',
-        password: 'gg123',
+        password: seedPassword(),
         role: 'admin', // Give admin role for full access
         department: 'Executive',
         createdBy: '000000000000000000000000' // Temporary ID

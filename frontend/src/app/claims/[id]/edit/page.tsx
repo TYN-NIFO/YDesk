@@ -45,7 +45,7 @@ export default function ClaimEditPage() {
           <p className="text-red-600">Error loading claim. Please try again.</p>
           <button
             onClick={() => router.back()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="ui-button ui-button-primary mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Go Back
           </button>
@@ -54,16 +54,5 @@ export default function ClaimEditPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ImprovedClaimForm 
-          onClose={handleClose}
-          employeeId={claim.employeeId?._id || claim.employeeId}
-          existingClaim={claim}
-          isEditing={true}
-        />
-      </div>
-    </div>
-  );
+  return <div className="ui-page"><ImprovedClaimForm onClose={handleClose} employeeId={claim.employeeId?._id || claim.employeeId} existingClaim={claim} isEditing /></div>;
 }

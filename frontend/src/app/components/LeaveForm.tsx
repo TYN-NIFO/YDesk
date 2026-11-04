@@ -5,6 +5,8 @@ import { useCreateLeaveMutation, useUpdateLeaveMutation } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { store } from '@/lib/store';
+import { CalendarDays, CalendarRange, MessageSquare, Send, Loader2 } from 'lucide-react';
+import { PageHeading, FormSection, Field } from './ui/WorkspaceUI';
 
 interface LeaveFormProps {
   initialData?: any;
@@ -188,180 +190,31 @@ export default function LeaveForm({
   const isLoading = isCreating || isUpdating;
   const isFormDisabled = isLoading || isSuccess;
 
-  return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        {mode === 'create' ? 'Submit Leave Request' : 'Edit Leave Request'}
-      </h2>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Leave Type */}
-        <div>
-          <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
-            Leave Type *
-          </label>
-          <select
-            id="type"
-            value={formData.type}
-            onChange={(e) => handleInputChange('type', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.type ? 'border-red-500' : 'border-gray-300'
-              }`}
-            disabled={isFormDisabled}
-          >
-            <option value="">Select leave type</option>
-            {LEAVE_TYPES.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-          {errors.type && <p className="mt-1 text-sm text-red-600">{errors.type}</p>}
-        </div>
-
-        {/* Date Range */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
-              Start Date *
-            </label>
-            <input
-              type="date"
-              id="startDate"
-              value={formData.startDate}
-              onChange={(e) => handleInputChange('startDate', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.startDate ? 'border-red-500' : 'border-gray-300'
-                }`}
-              disabled={isFormDisabled}
-            />
-            {errors.startDate && <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>}
+  const duration = formData.startDate && formData.endDate && new Date(formData.endDate) >= new Date(formData.startDate)
+    ? Math.floor((new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / 86400000) + 1 : 0;
+  const displayDate = (date: string) => date ? new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not selected';
+  return <div>
+    <PageHeading title={mode === 'create' ? 'Request time off' : 'Edit time-off request'} description="Plan your time, share the details, and keep your team in sync." icon={CalendarDays} onBack={onCancel} />
+    <form onSubmit={handleSubmit} className="ui-form-layout">
+      <div className="ui-form-main">
+        <FormSection title="Type of request" description="Choose the option that best describes your time away." icon={CalendarDays}>
+          <Field label="Request type" htmlFor="leave-type" required error={errors.type}><select id="leave-type" className="ui-control" value={formData.type} onChange={event => handleInputChange('type', event.target.value)} disabled={isFormDisabled} aria-invalid={!!errors.type}><option value="">Choose a request type</option>{LEAVE_TYPES.map(type => <option key={type}>{type}</option>)}</select></Field>
+        </FormSection>
+        <FormSection title="Dates and duration" description="Both the start and end date are included in your request." icon={CalendarRange}>
+          <div className="grid sm:grid-cols-2 gap-5">
+            <Field label="Start date" htmlFor="leave-start" required error={errors.startDate}><input type="date" id="leave-start" className="ui-control" value={formData.startDate} onChange={event => handleInputChange('startDate', event.target.value)} disabled={isFormDisabled} aria-invalid={!!errors.startDate} /></Field>
+            <Field label="End date" htmlFor="leave-end" required error={errors.endDate}><input type="date" id="leave-end" className="ui-control" min={formData.startDate || undefined} value={formData.endDate} onChange={event => handleInputChange('endDate', event.target.value)} disabled={isFormDisabled} aria-invalid={!!errors.endDate} /></Field>
+            {formData.type === 'Permission' && <Field label="Hours requested" htmlFor="leave-hours" required error={errors.hours} hint="For part of a workday, enter between 0.5 and 24 hours."><input type="number" id="leave-hours" className="ui-control" min="0.5" max="24" step="0.5" value={formData.hours} onChange={event => handleInputChange('hours', event.target.value)} disabled={isFormDisabled} placeholder="For example, 2" aria-invalid={!!errors.hours} /></Field>}
           </div>
-
-          <div>
-            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
-              End Date *
-            </label>
-            <input
-              type="date"
-              id="endDate"
-              value={formData.endDate}
-              onChange={(e) => handleInputChange('endDate', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.endDate ? 'border-red-500' : 'border-gray-300'
-                }`}
-              disabled={isFormDisabled}
-            />
-            {errors.endDate && <p className="mt-1 text-sm text-red-600">{errors.endDate}</p>}
-          </div>
-        </div>
-
-        {/* Hours (only for Permission type) */}
-        {formData.type === 'Permission' && (
-          <div>
-            <label htmlFor="hours" className="block text-sm font-medium text-gray-700 mb-2">
-              Hours *
-            </label>
-            <input
-              type="number"
-              id="hours"
-              step="0.5"
-              min="0.5"
-              max="24"
-              value={formData.hours}
-              onChange={(e) => handleInputChange('hours', e.target.value)}
-              placeholder="Enter hours (0.5 - 24)"
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.hours ? 'border-red-500' : 'border-gray-300'
-                }`}
-              disabled={isFormDisabled}
-            />
-            {errors.hours && <p className="mt-1 text-sm text-red-600">{errors.hours}</p>}
-            <p className="mt-1 text-sm text-gray-500">
-              For partial day leave, specify the number of hours needed.
-            </p>
-          </div>
-        )}
-
-        {/* Reason */}
-        <div>
-          <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-            Reason (Optional)
-          </label>
-          <textarea
-            id="reason"
-            rows={3}
-            value={formData.reason}
-            onChange={(e) => handleInputChange('reason', e.target.value)}
-            placeholder="Enter reason for leave (optional)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isFormDisabled}
-          />
-        </div>
-
-        {/* Submit Error */}
-        {errors.submit && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{errors.submit}</p>
-          </div>
-        )}
-
-        {/* Success Message */}
-        {isSuccess && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-            <p className="text-sm text-green-600">
-              ✅ Leave request submitted successfully! Redirecting to dashboard...
-            </p>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4">
-          <button
-            type="submit"
-            disabled={isFormDisabled}
-            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {mode === 'create' ? 'Submitting...' : 'Updating...'}
-              </span>
-            ) : (
-              mode === 'create' ? 'Submit Leave Request' : 'Update Leave Request'
-            )}
-          </button>
-
-          {onCancel && !isSuccess && (
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={isFormDisabled}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Cancel
-            </button>
-          )}
-
-          {isSuccess && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-            >
-              Submit Another Leave Request
-            </button>
-          )}
-        </div>
-      </form>
-
-      {/* Info Box */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-        <h3 className="text-sm font-medium text-blue-900 mb-2">Leave Request Guidelines:</h3>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• All leave requests require approval from CTO or CEO</li>
-          <li>• You can edit or delete requests only while they are in "submitted" status</li>
-          <li>• Permission type requires hours (0.5 - 24) for partial day leave</li>
-          <li>• For single day leaves, start and end dates should be the same</li>
-        </ul>
+        </FormSection>
+        <FormSection title="A note for your approver" description="Add context or handover information if it helps." icon={MessageSquare}>
+          <Field label="Reason or handover note" htmlFor="leave-reason" hint="Optional. Keep personal details to what you are comfortable sharing."><textarea id="leave-reason" rows={4} maxLength={500} className="ui-control" value={formData.reason} onChange={event => handleInputChange('reason', event.target.value)} disabled={isFormDisabled} placeholder="Anything your approver should know?" /></Field>
+        </FormSection>
+        {errors.submit && <p role="alert" className="ui-note">{errors.submit}</p>}
+        {isSuccess && <p role="status" className="ui-note">Your request has been saved. Opening your workspace…</p>}
+        <div className="ui-form-actions">{onCancel && <button type="button" className="ui-button ui-button-secondary" onClick={onCancel} disabled={isLoading}>Cancel</button>}<button type="submit" disabled={isFormDisabled} className="ui-button ui-button-primary">{isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}{isLoading ? 'Saving request…' : mode === 'create' ? 'Send request for approval' : 'Save request changes'}</button>{isSuccess && <button type="button" className="ui-button ui-button-secondary" onClick={resetForm}>Create another request</button>}</div>
       </div>
-    </div>
-  );
+      <aside className="ui-summary"><h2 className="ui-summary-heading">Request summary</h2><div className="ui-summary-content"><div className="ui-summary-row"><span>Type</span><strong>{formData.type || 'Not selected'}</strong></div><div className="ui-summary-row"><span>From</span><strong>{displayDate(formData.startDate)}</strong></div><div className="ui-summary-row"><span>Until</span><strong>{displayDate(formData.endDate)}</strong></div></div><div className="ui-summary-total"><p>Requested duration</p><strong aria-live="polite">{formData.type === 'Permission' ? `${formData.hours || 0} hours` : `${duration} ${duration === 1 ? 'day' : 'days'}`}</strong><small>Dates are recorded in {formData.timezone}.</small></div><div className="ui-summary-help"><h3>What happens next</h3><p>Your request goes to the executive team for review. You can edit or withdraw it while it is awaiting approval.</p><p className="mt-3">Check your team calendar and arrange a handover before taking time off.</p></div></aside>
+    </form>
+  </div>;
 }

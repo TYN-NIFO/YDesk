@@ -1,0 +1,483 @@
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+import { Readable } from 'node:stream';
+
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'isolated-tests-only-secret-not-for-deployment';
+process.env.AWS_S3_BUCKET_NAME = 'test-receipts';
+process.env.AWS_REGION = 'us-east-1';
+process.env.RATE_LIMIT_MAX_REQUESTS = '2000';
+
+const { app } = await import('../server.js');
+const { generateAccessToken } = await import('../controllers/authController.js');
+const { default: User } = await import('../models/User.js');
+const { default: Claim } = await import('../models/Claim.js');
+const { default: Policy } = await import('../models/Policy.js');
+const { default: RefreshToken } = await import('../models/RefreshToken.js');
+const { OAuthRefreshToken, OAuthCode } = await import('../models/OAuth.js');
+const { default: storage } = await import('../services/storage.js');
+const { privateStorageService, StorageService } = await import('../services/storage.js');
+const { default: Grievance } = await import('../models/Grievance.js');
+const { validateAgainstPolicy } = await import('../services/policyValidation.js');
+const { validCategories } = await import('../lib/categoryMaster.js');
+const { default: smtpService } = await import('../services/emailService.js');
+const { default: gridService } = await import('../services/sendgridEmailService.js');
+const { notifyGrievanceCreated, notifyGrievanceStatusChanged } = await import('../services/grievanceNotifications.js');
+const { summaryWeek, buildWeeklyFeedbackSummary, sendWeeklyFeedbackSummary, mailIsConfigured } = await import('../services/weeklyFeedbackSummary.js');
+const { default: WeeklySummaryDelivery } = await import('../models/WeeklySummaryDelivery.js');
+let database, server, base, employee, other, finance, admin, supervisor, executive;
+
+before(async () => {
+  database = await MongoMemoryServer.create();
+  await mongoose.connect(database.getUri());
+  server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  base = `http://127.0.0.1:${server.address().port}`;
+  const makeUser = async (role, name) => {
+    const user = new User({ _id: new mongoose.Types.ObjectId(), name, email: `${name}@example.test`, role });
+    user.createdBy = user._id;
+    user.password = 'TestPassword123!';
+    return user.save();
+  };
+  employee = await makeUser('employee', 'employee');
+  other = await makeUser('employee', 'other');
+  finance = await makeUser('finance_manager', 'finance');
+  admin = await makeUser('admin', 'admin');
+  supervisor = await makeUser('supervisor', 'supervisor');
+  executive = await makeUser('executive', 'executive');
+  smtpService.sendEmail = async () => ({ success: true });
+  gridService.sendEmail = async () => ({ success: true });
+  await Policy.create({ claimCategories: validCategories, requiredDocuments: { default: [] }, exchangeRates: { USD: 80, EUR: 90 } });
+  storage.save = async file => ({ fileId: 'test-file', storageKey: 'test-file.pdf', name: file.originalname, size: file.size, mime: file.mimetype, url: 'https://test-receipts.s3.us-east-1.amazonaws.com/test-file.pdf' });
+  storage.remove = async () => {};
+  storage.get = async () => ({ body: Readable.from(['receipt']), contentType: 'application/pdf' });
+});
+
+after(async () => {
+  if (server) await new Promise(resolve => server.close(resolve));
+  await mongoose.disconnect();
+  if (database) await database.stop();
+});
+
+async function request(path, { user, method = 'GET', body, cookie, token } = {}) {
+  const headers = {};
+  if (user || token) headers.Authorization = `Bearer ${token || generateAccessToken(await User.findById(user._id))}`;
+  if (cookie) headers.Cookie = cookie;
+  if (body) headers['Content-Type'] = 'application/json';
+  return fetch(`${base}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+}
+
+const item = () => ({ date: '2026-01-01', subCategory: 'Supplies', description: 'Office supplies for the project', currency: 'INR', amount: 100, gstTotal: 18, amountInINR: 99999, attachments: [] });
+const data = () => ({ businessUnit: 'General', category: validCategories[0], lineItems: [item()], advances: [] });
+async function claim(user = employee, status = 'submitted') {
+  return Claim.create({ ...data(), employeeId: user._id, createdBy: user._id, grandTotal: 118, netPayable: 118, status });
+}
+async function submit(payload, files = []) {
+  const form = new FormData();
+  form.set('claimData', JSON.stringify(payload));
+  for (const file of files) form.append('files', new Blob(['receipt'], { type: 'application/pdf' }), file);
+  return fetch(`${base}/api/claims`, { method: 'POST', headers: { Authorization: `Bearer ${generateAccessToken(await User.findById(employee._id))}` }, body: form });
+}
+
+test('employee cannot elevate their role', async () => {
+  const response = await request(`/api/users/${employee._id}`, { user: employee, method: 'PATCH', body: { name: employee.name, email: employee.email, role: 'admin' } });
+  assert.equal(response.status, 403);
+  assert.equal((await User.findById(employee._id)).role, 'employee');
+});
+
+test('local preview origins are allowed for cookie-based session refresh', async () => {
+  const response = await fetch(`${base}/api/health`, { headers: { Origin: 'http://127.0.0.1:3001' } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), 'http://127.0.0.1:3001');
+  assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
+});
+
+test('financial export requires an authorized role', async () => {
+  assert.equal((await request('/api/excel/getClaimsExcel')).status, 401);
+  assert.equal((await request('/api/excel/getClaimsExcel', { user: employee })).status, 403);
+  assert.equal((await request('/api/excel/getClaimsExcel', { user: finance })).status, 200);
+});
+
+test('claim totals are calculated from amount and GST, never client INR totals', async () => {
+  const response = await submit(data());
+  assert.equal(response.status, 201);
+  const result = await response.json();
+  assert.equal(result.grandTotal, 118);
+  assert.equal(result.lineItems[0].amountInINR, 118);
+});
+
+test('invalid money, advances and empty claims are rejected', async () => {
+  for (const payload of [{ ...data(), lineItems: [] }, { ...data(), lineItems: [{ ...item(), amountInINR: -5 }] }, { ...data(), advances: [{ amount: -1 }] }]) {
+    assert.equal((await submit(payload)).status, 400);
+  }
+});
+
+test('foreign currency uses configured server rates', async () => {
+  const response = await submit({ ...data(), lineItems: [{ ...item(), currency: 'USD' }] });
+  assert.equal(response.status, 201);
+  assert.equal((await response.json()).grandTotal, 9440);
+});
+
+test('claim editing rejects status, ownership and payment injection', async () => {
+  const created = await claim();
+  for (const injected of [{ status: 'paid' }, { employeeId: other._id }, { payment: { channel: 'Cash' } }, { financeApproval: { status: 'approved' } }]) {
+    const response = await request(`/api/claims/${created._id}`, { user: employee, method: 'PATCH', body: { ...data(), ...injected } });
+    assert.equal(response.status, 400);
+  }
+  assert.equal((await Claim.findById(created._id)).status, 'submitted');
+});
+
+test('editing approved expenses resets approval and settled expenses cannot be edited', async () => {
+  const approved = await claim(employee, 'finance_approved');
+  const response = await request(`/api/claims/${approved._id}`, { user: finance, method: 'PATCH', body: data() });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).status, 'submitted');
+  const paid = await claim(employee, 'paid');
+  assert.equal((await request(`/api/claims/${paid._id}`, { user: admin, method: 'PATCH', body: data() })).status, 403);
+});
+
+test('attachment mutation requires claim access and a mutable status', async () => {
+  const created = await claim();
+  assert.equal((await request(`/api/claims/${created._id}/upload`, { user: other, method: 'POST' })).status, 403);
+  const paid = await claim(employee, 'paid');
+  assert.equal((await request(`/api/claims/${paid._id}/upload`, { user: employee, method: 'POST' })).status, 403);
+});
+
+test('supervisors can read their own claims', async () => {
+  const created = await claim(supervisor);
+  assert.equal((await request(`/api/claims/${created._id}`, { user: supervisor })).status, 200);
+});
+
+test('employees cannot read another employee claim details', async () => {
+  const created = await claim();
+  assert.equal((await request(`/api/claims/${created._id}`, { user: other })).status, 403);
+});
+
+test('approval actions are validated and payment reference is retained', async () => {
+  const created = await claim();
+  assert.equal((await request(`/api/claims/${created._id}/finance-approve`, { user: finance, method: 'POST', body: { action: 'invalid' } })).status, 400);
+  assert.equal((await request(`/api/claims/${created._id}/finance-approve`, { user: finance, method: 'POST', body: { action: 'approve' } })).status, 200);
+  const paid = await request(`/api/claims/${created._id}/mark-paid`, { user: finance, method: 'POST', body: { channel: 'Bank Transfer', reference: 'LOCAL-TEST' } });
+  assert.equal(paid.status, 200);
+  assert.equal((await paid.json()).payment.reference, 'LOCAL-TEST');
+});
+
+test('refresh rotates once and logout revokes access and OAuth sessions', async () => {
+  const login = await request('/api/auth/token/', { method: 'POST', body: { email: employee.email, password: 'TestPassword123!' } });
+  assert.equal(login.status, 200);
+  const originalCookie = login.headers.get('set-cookie').split(';')[0];
+  assert.match(login.headers.get('set-cookie'), /Path=\/api\/auth\//);
+  const refreshed = await request('/api/auth/refresh/', { method: 'POST', cookie: originalCookie });
+  assert.equal(refreshed.status, 200);
+  assert.equal((await request('/api/auth/refresh/', { method: 'POST', cookie: originalCookie })).status, 401);
+  const { accessToken } = await refreshed.json();
+  const cookie = refreshed.headers.get('set-cookie').split(';')[0];
+  await OAuthRefreshToken.create({ tokenHash: 'test-oauth', clientId: 'test', userId: employee._id, expiresAt: new Date(Date.now() + 60000) });
+  await OAuthCode.create({ codeHash: 'test-code', clientId: 'test', userId: employee._id, codeChallenge: 'test', redirectUri: 'http://localhost', expiresAt: new Date(Date.now() + 60000) });
+  assert.equal((await request('/api/auth/logout/', { method: 'POST', token: accessToken, cookie })).status, 200);
+  assert.equal((await request('/api/auth/me/', { token: accessToken })).status, 401);
+  assert.equal((await request('/api/auth/refresh/', { method: 'POST', cookie })).status, 401);
+  assert.equal(await OAuthRefreshToken.countDocuments({ userId: employee._id }), 0);
+  assert.equal(await OAuthCode.countDocuments({ userId: employee._id }), 0);
+});
+
+test('refresh token digest is deterministic and verifies correctly', () => {
+  const digest = RefreshToken.hashToken('example');
+  assert.equal(digest, RefreshToken.hashToken('example'));
+  assert.equal(new RefreshToken({ tokenHash: digest }).verifyToken('example'), true);
+  assert.equal(new RefreshToken({ tokenHash: digest }).verifyToken('wrong'), false);
+});
+
+test('storage failures do not create claims with missing evidence', async () => {
+  const original = storage.save;
+  const count = await Claim.countDocuments();
+  storage.save = async () => { throw new Error('Simulated storage outage'); };
+  try {
+    assert.equal((await submit(data(), ['receipt.pdf'])).status, 500);
+    assert.equal(await Claim.countDocuments(), count);
+  } finally { storage.save = original; }
+});
+
+test('canonical policy can be saved and required receipts are enforced', async () => {
+  const current = await Policy.findOne().lean();
+  const response = await request('/api/policy', { user: admin, method: 'PUT', body: { ...current, version: 'test-v2', mealCaps: { A: { lunch: 10 } }, lodgingCaps: { A: 100 }, requiredDocuments: { default: ['supporting_doc'] }, rulesBehavior: { missingDocuments: 'hard', capExceeded: 'hard' }, maxFileSizeMB: 4 } });
+  assert.equal(response.status, 200);
+  assert.equal((await submit(data())).status, 400);
+  assert.equal((await submit(data(), ['receipt.pdf'])).status, 201);
+});
+
+test('meal and lodging caps honor hard and soft policy behavior', async () => {
+  const policy = { claimCategories: validCategories, requiredDocuments: {}, mealCaps: { A: { lunch: 100 } }, lodgingCaps: { A: 100 }, rulesBehavior: { capExceeded: 'hard' } };
+  for (const subCategory of ['Lunch', 'Hotel']) {
+    const payload = { ...data(), lineItems: [{ ...item(), subCategory, amountInINR: 200 }] };
+    assert.equal((await validateAgainstPolicy(payload, policy)).isValid, false);
+    assert.equal((await validateAgainstPolicy(payload, { ...policy, rulesBehavior: { capExceeded: 'soft' } })).isValid, true);
+  }
+});
+
+test('finance users cannot approve their own claims', async () => {
+  const created = await claim(finance);
+  assert.equal((await request(`/api/claims/${created._id}/finance-approve`, { user: finance, method: 'POST', body: { action: 'approve' } })).status, 403);
+});
+
+test('only one concurrent payment transition succeeds', async () => {
+  const created = await claim(employee, 'finance_approved');
+  const responses = await Promise.all([1, 2].map(() => request(`/api/claims/${created._id}/mark-paid`, { user: finance, method: 'POST', body: { channel: 'Cash' } })));
+  assert.equal(responses.filter(response => response.status === 200).length, 1);
+  assert.ok(responses.some(response => [400, 409].includes(response.status)));
+});
+
+test('confidential storage rejects missing or shared bucket configuration', async () => {
+  const previous = process.env.AWS_S3_PRIVATE_BUCKET_NAME;
+  try {
+    delete process.env.AWS_S3_PRIVATE_BUCKET_NAME;
+    await assert.rejects(new StorageService({ privateFiles: true }).ensureS3Initialized(), /PRIVATE_BUCKET/);
+    process.env.AWS_S3_PRIVATE_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
+    await assert.rejects(new StorageService({ privateFiles: true }).ensureS3Initialized(), /separate private bucket/);
+  } finally {
+    if (previous) process.env.AWS_S3_PRIVATE_BUCKET_NAME = previous;
+    else delete process.env.AWS_S3_PRIVATE_BUCKET_NAME;
+  }
+});
+
+test('grievance ownership, private downloads and handler transitions are enforced', async () => {
+  const originalSave = privateStorageService.save;
+  const originalGet = privateStorageService.get;
+  privateStorageService.save = async file => ({ fileId: 'confidential', storageKey: 'confidential.pdf', name: file.originalname, size: file.size, mime: file.mimetype });
+  privateStorageService.get = async () => ({ body: Readable.from(['private document']), contentType: 'application/pdf' });
+  try {
+    const form = new FormData();
+    form.set('category', 'Policy/Process');
+    form.set('subject', 'Please review this process');
+    form.set('description', 'A local regression test concern with sufficient detail.');
+    form.append('files', new Blob(['private document'], { type: 'application/pdf' }), 'private.pdf');
+    const response = await fetch(`${base}/api/grievances`, { method: 'POST', headers: { Authorization: `Bearer ${generateAccessToken(await User.findById(other._id))}` }, body: form });
+    assert.equal(response.status, 201);
+    const { grievance } = await response.json();
+    const detail = `/api/grievances/${grievance.grievanceId}`;
+    assert.equal((await request(detail, { user: employee })).status, 404);
+    assert.equal((await request(`${detail}/attachments/confidential`, { user: other })).status, 200);
+    assert.equal((await request(`${detail}/attachments/confidential`, { user: employee })).status, 404);
+    assert.equal((await request(`${detail}/status`, { user: other, method: 'PATCH', body: { status: 'resolved', note: 'Local outcome' } })).status, 403);
+    await User.updateOne({ _id: admin._id }, { $set: { grievanceAccess: 'handler' } });
+    assert.equal((await request(`${detail}/status`, { user: admin, method: 'PATCH', body: { status: 'resolved', note: 'Local outcome' } })).status, 200);
+    assert.equal((await request(`/api/users/${other._id}`, { user: admin, method: 'DELETE' })).status, 400);
+    assert.equal((await Grievance.findOne({ grievanceId: grievance.grievanceId })).attachments[0].privateStorage, true);
+  } finally { privateStorageService.save = originalSave; privateStorageService.get = originalGet; }
+});
+
+test('admin session revocation immediately invalidates an existing JWT', async () => {
+  const token = generateAccessToken(await User.findById(supervisor._id));
+  assert.equal((await request(`/api/auth/revoke/${supervisor._id}/`, { user: admin, method: 'POST' })).status, 200);
+  assert.equal((await request('/api/auth/me/', { token })).status, 401);
+});
+
+test('avatar upload returns the S3 URL rather than a nonexistent local path', async () => {
+  const form = new FormData();
+  form.set('avatar', new Blob(['image'], { type: 'image/png' }), 'avatar.png');
+  const response = await fetch(`${base}/api/auth/avatar/`, { method: 'POST', headers: { Authorization: `Bearer ${generateAccessToken(await User.findById(employee._id))}` }, body: form });
+  assert.equal(response.status, 200);
+  assert.match((await response.json()).avatarUrl, /^https:\/\//);
+});
+
+const roleUsers = {
+  employee: () => employee, supervisor: () => supervisor, finance_manager: () => finance,
+  admin: () => admin, executive: () => executive
+};
+
+async function feedback(user, overrides = {}) {
+  return Grievance.create({ employeeId: user._id, category: 'Policy/Process', subject: 'Private feedback subject', description: 'PRIVATE_DESCRIPTION_DO_NOT_EMAIL', feedbackType: 'suggestion', ...overrides });
+}
+
+for (const [role, getUser] of Object.entries(roleUsers)) {
+  test(`${role}: submit and read own feedback; cannot read or act on another person's feedback`, async () => {
+    const user = getUser();
+    await User.updateOne({ _id: user._id }, { $set: { grievanceAccess: null } });
+    const response = await request('/api/feedback', { user, method: 'POST', body: { category: 'Ideas & Suggestions', feedbackType: 'suggestion', subject: 'A better onboarding checklist', description: 'Please consider adding a shared onboarding checklist for the team.' } });
+    assert.equal(response.status, 201);
+    const created = (await response.json()).grievance;
+    assert.equal(created.feedbackType, 'suggestion');
+    assert.match(created.grievanceId, /^feedback_/);
+    assert.equal((await request(`/api/feedback/${created.grievanceId}`, { user })).status, 200);
+    const ownList = await (await request('/api/feedback?feedbackType=suggestion', { user })).json();
+    assert.ok(ownList.grievances.some(record => record.grievanceId === created.grievanceId));
+    assert.ok(ownList.grievances.every(record => record.employeeId._id === user._id.toString()));
+    const foreign = await feedback(other);
+    assert.equal((await request(`/api/feedback/${foreign.grievanceId}`, { user })).status, 404);
+    assert.equal((await request('/api/feedback?scope=all', { user })).status, 403);
+    assert.equal((await request('/api/feedback/summary', { user })).status, 403);
+    assert.equal((await request(`/api/feedback/${foreign.grievanceId}/status`, { user, method: 'PATCH', body: { status: 'resolved', note: 'Not permitted' } })).status, 403);
+    assert.equal((await request('/api/users', { user })).status, role === 'admin' ? 200 : 403);
+    assert.equal((await request('/api/leaves/pending', { user })).status, role === 'executive' ? 200 : 403);
+  });
+
+  test(`${role}: designated handlers can review others, never themselves`, async () => {
+    const user = getUser();
+    await User.updateOne({ _id: user._id }, { $set: { grievanceAccess: 'handler' } });
+    try {
+      const owned = await feedback(user);
+      const foreign = await feedback(other);
+      assert.equal((await request('/api/feedback?scope=all', { user })).status, 200);
+      assert.equal((await request(`/api/feedback/${foreign.grievanceId}`, { user })).status, 200);
+      assert.equal((await request(`/api/feedback/${owned.grievanceId}/status`, { user, method: 'PATCH', body: { status: 'resolved', note: 'Cannot handle own feedback' } })).status, 403);
+      assert.equal((await request(`/api/feedback/${foreign.grievanceId}/status`, { user, method: 'PATCH', body: { status: 'resolved', note: 'Reviewed this suggestion' } })).status, 200);
+      assert.equal((await request(`/api/feedback/${foreign.grievanceId}/status`, { user, method: 'PATCH', body: { status: 'submitted' } })).status, 400);
+    } finally { await User.updateOne({ _id: user._id }, { $set: { grievanceAccess: null } }); }
+  });
+
+  test(`${role}: summary access never grants access to private feedback details`, async () => {
+    const user = getUser();
+    await User.updateOne({ _id: user._id }, { $set: { grievanceAccess: 'summary' } });
+    try {
+      const foreign = await feedback(other);
+      const response = await request('/api/feedback/summary', { user });
+      assert.equal(response.status, 200);
+      const summary = await response.json();
+      const payload = JSON.stringify(summary);
+      assert.ok(!payload.includes('PRIVATE_DESCRIPTION_DO_NOT_EMAIL'));
+      assert.ok(!payload.includes('Private feedback subject'));
+      assert.ok(!payload.includes(other.email));
+      assert.equal((await request(`/api/feedback/${foreign.grievanceId}`, { user })).status, 404);
+      assert.equal((await request('/api/feedback?scope=all', { user })).status, 403);
+      assert.equal((await request(`/api/feedback/${foreign.grievanceId}/status`, { user, method: 'PATCH', body: { status: 'closed', note: 'Not permitted' } })).status, 403);
+    } finally { await User.updateOne({ _id: user._id }, { $set: { grievanceAccess: null } }); }
+  });
+}
+
+test('feedback form metadata excludes workload and grievance choices', async () => {
+  const response = await request('/api/feedback/meta', { user: employee });
+  assert.equal(response.status, 200);
+  const meta = await response.json();
+  assert.ok(!meta.categories.includes('Workload & Hours'));
+  assert.deepEqual(meta.feedbackTypes, ['general', 'suggestion', 'appreciation', 'concern']);
+  for (const invalid of [{ category: 'Workload & Hours' }, { feedbackType: 'grievance' }]) {
+    assert.equal((await request('/api/feedback', { user: employee, method: 'POST', body: { category: 'Policy/Process', feedbackType: 'general', subject: 'Feedback submission', description: 'This feedback contains enough context for a reviewer.', ...invalid } })).status, 400);
+  }
+  for (const feedbackType of meta.feedbackTypes) {
+    const created = await request('/api/feedback', { user: employee, method: 'POST', body: { category: 'Other', feedbackType, subject: 'Feedback submission', description: 'This feedback contains enough context for a reviewer.' } });
+    assert.equal(created.status, 201);
+    assert.equal((await created.json()).grievance.feedbackType, feedbackType);
+  }
+});
+
+test('legacy records and API links remain accessible without a data migration', async () => {
+  const legacy = await feedback(employee, { grievanceId: 'grievance_2025_99999', category: 'Workload & Hours' });
+  assert.equal((await request(`/api/feedback/${legacy.grievanceId}`, { user: employee })).status, 200);
+  assert.equal((await request(`/api/grievances/${legacy.grievanceId}`, { user: employee })).status, 200);
+  await User.updateOne({ _id: admin._id }, { $set: { grievanceAccess: 'handler' } });
+  assert.equal((await request(`/api/feedback/${legacy.grievanceId}/status`, { user: admin, method: 'PATCH', body: { status: 'resolved', note: 'Review legacy feedback' } })).status, 200);
+});
+
+test('SMTP and SendGrid notifications use feedback wording and exclude private content', async () => {
+  const savedKey = process.env.SENDGRID_API_KEY;
+  const smtp = smtpService.sendEmail;
+  const grid = gridService.sendEmail;
+  const messages = [];
+  smtpService.sendEmail = gridService.sendEmail = async message => { messages.push(message); return { success: true }; };
+  try {
+    const record = await feedback(employee);
+    for (const useGrid of [false, true]) {
+      if (useGrid) process.env.SENDGRID_API_KEY = 'mock-key-no-network';
+      else delete process.env.SENDGRID_API_KEY;
+      await notifyGrievanceCreated(record, employee);
+      await notifyGrievanceStatusChanged(record, employee, 'PRIVATE_NOTE_DO_NOT_EMAIL');
+    }
+    assert.equal(messages.length, 6);
+    for (const message of messages) {
+      assert.ok(/feedback/i.test(message.subject));
+      assert.ok(!JSON.stringify(message).includes('PRIVATE_DESCRIPTION_DO_NOT_EMAIL'));
+      assert.ok(!JSON.stringify(message).includes('PRIVATE_NOTE_DO_NOT_EMAIL'));
+      assert.match(message.html, /\/feedback/);
+    }
+  } finally {
+    smtpService.sendEmail = smtp;
+    gridService.sendEmail = grid;
+    if (savedKey) process.env.SENDGRID_API_KEY = savedKey;
+    else delete process.env.SENDGRID_API_KEY;
+  }
+});
+
+test('weekly summary covers the last complete Monday-to-Sunday week in IST', () => {
+  const week = summaryWeek(new Date('2026-11-02T03:30:00Z'));
+  assert.equal(week.start.toISOString(), '2026-10-25T18:30:00.000Z');
+  assert.equal(week.end.toISOString(), '2026-11-01T18:30:00.000Z');
+});
+
+test('mail readiness requires a provider and a sender', () => {
+  const keys = ['SENDGRID_API_KEY', 'EMAIL_FROM', 'SMTP_FROM', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'];
+  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  try {
+    keys.forEach(key => delete process.env[key]);
+    assert.equal(mailIsConfigured(), false);
+    process.env.SENDGRID_API_KEY = 'mock-key';
+    assert.equal(mailIsConfigured(), false);
+    process.env.EMAIL_FROM = 'sender@example.test';
+    assert.equal(mailIsConfigured(), true);
+    delete process.env.SENDGRID_API_KEY;
+    Object.assign(process.env, { SMTP_HOST: 'smtp.example.test', SMTP_USER: 'sender', SMTP_PASS: 'mock-password', SMTP_FROM: 'sender@example.test' });
+    assert.equal(mailIsConfigured(), true);
+  } finally {
+    for (const key of keys) {
+      if (previous[key] !== undefined) process.env[key] = previous[key];
+      else delete process.env[key];
+    }
+  }
+});
+
+test('weekly summaries are aggregate-only and dry runs send no email', async () => {
+  const now = new Date('2026-11-02T03:30:00Z');
+  await feedback(employee, { createdAt: new Date('2026-10-28T12:00:00Z'), feedbackType: 'appreciation' });
+  const summary = await buildWeeklyFeedbackSummary(now);
+  assert.ok(summary.received >= 1);
+  assert.ok(!summary.text.includes('Private feedback subject'));
+  assert.ok(!summary.html.includes('PRIVATE_DESCRIPTION_DO_NOT_EMAIL'));
+  let calls = 0;
+  const result = await sendWeeklyFeedbackSummary({ now, send: async () => { calls++; } });
+  assert.equal(result.dryRun, true);
+  assert.equal(calls, 0);
+});
+
+test('weekly emails are opt-in, sent only to active authorized viewers, and deduplicated', async () => {
+  const previous = process.env.WEEKLY_SUMMARY_ENABLED;
+  delete process.env.WEEKLY_SUMMARY_ENABLED;
+  await assert.rejects(sendWeeklyFeedbackSummary({ dryRun: false, send: async () => {} }), /WEEKLY_SUMMARY_ENABLED/);
+  process.env.WEEKLY_SUMMARY_ENABLED = 'true';
+  await User.updateMany({}, { $set: { grievanceAccess: null } });
+  await User.updateOne({ _id: admin._id }, { $set: { grievanceAccess: 'handler' } });
+  await User.updateOne({ _id: executive._id }, { $set: { grievanceAccess: 'summary' } });
+  await User.updateOne({ _id: other._id }, { $set: { grievanceAccess: 'handler', isActive: false } });
+  const messages = [];
+  try {
+    const options = { now: new Date('2026-11-02T03:30:00Z'), dryRun: false, send: async message => { messages.push(message); } };
+    const first = await sendWeeklyFeedbackSummary(options);
+    assert.equal(first.sent, 2);
+    assert.deepEqual(messages.map(message => message.to).sort(), [admin.email, executive.email].sort());
+    const second = await sendWeeklyFeedbackSummary(options);
+    assert.equal(second.sent, 0);
+    assert.equal(second.skipped, 2);
+    assert.equal(await WeeklySummaryDelivery.countDocuments({ status: 'sent' }), 2);
+  } finally {
+    await User.updateOne({ _id: other._id }, { $set: { isActive: true, grievanceAccess: null } });
+    if (previous) process.env.WEEKLY_SUMMARY_ENABLED = previous;
+    else delete process.env.WEEKLY_SUMMARY_ENABLED;
+  }
+});
+
+test('failed weekly deliveries can be retried without resending successful recipients', async () => {
+  const previous = process.env.WEEKLY_SUMMARY_ENABLED;
+  process.env.WEEKLY_SUMMARY_ENABLED = 'true';
+  try {
+    const now = new Date('2026-11-09T03:30:00Z');
+    const failed = await sendWeeklyFeedbackSummary({ now, dryRun: false, send: async message => { if (message.to === admin.email) throw new Error('Simulated provider outage'); } });
+    assert.equal(failed.failed, 1);
+    assert.equal(failed.sent, 1);
+    const retry = await sendWeeklyFeedbackSummary({ now, dryRun: false, send: async () => ({ success: true }) });
+    assert.equal(retry.sent, 1);
+    assert.equal(retry.skipped, 1);
+  } finally {
+    if (previous) process.env.WEEKLY_SUMMARY_ENABLED = previous;
+    else delete process.env.WEEKLY_SUMMARY_ENABLED;
+  }
+});

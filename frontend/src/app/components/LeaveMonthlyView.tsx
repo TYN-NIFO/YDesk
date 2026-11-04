@@ -129,7 +129,7 @@ export default function LeaveMonthlyView({
         <p className="text-gray-600 mb-4">There was an error loading your leave data.</p>
         <button
           onClick={() => refetch()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
         >
           Try Again
         </button>
@@ -167,7 +167,7 @@ export default function LeaveMonthlyView({
         {isCurrentUser && (
           <button
             onClick={() => setShowForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
           >
             Request Leave
           </button>
@@ -177,7 +177,7 @@ export default function LeaveMonthlyView({
       {/* KPI Cards */}
       {yearSummary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
@@ -195,7 +195,7 @@ export default function LeaveMonthlyView({
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
@@ -213,7 +213,7 @@ export default function LeaveMonthlyView({
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
@@ -231,7 +231,7 @@ export default function LeaveMonthlyView({
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-red-100 rounded-md flex items-center justify-center">
@@ -252,7 +252,7 @@ export default function LeaveMonthlyView({
       )}
 
       {/* Detailed Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-md">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">
             Leave Requests for {monthName}
@@ -274,7 +274,7 @@ export default function LeaveMonthlyView({
             {isCurrentUser && (
               <button
                 onClick={() => setShowForm(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
                 Submit Your First Request
               </button>
@@ -344,7 +344,7 @@ export default function LeaveMonthlyView({
                       <button
                         onClick={() => handleDelete(leave._id)}
                         disabled={isDeleting}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
+                        className="ui-button ui-button-secondary text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
                       >
                         Delete
                       </button>

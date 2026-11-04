@@ -15,46 +15,22 @@ const baseQuery = fetchBaseQuery({
 });
 
 // Base query with re-authentication
-const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
-  let result = await baseQuery(args, api, extraOptions);
 
-  if (result.error && (result.error.status === 401 || result.error.status === 403)) {
-    // Try to refresh the token
-    const refreshResult = await baseQuery(
-      {
-        url: '/auth/refresh/',
-        method: 'POST',
-      },
-      api,
-      extraOptions
-    );
 
-    if (refreshResult.data) {
-      // Store the new token
-      api.dispatch({
-        type: 'auth/setTokens',
-        payload: refreshResult.data,
-      });
-
-      // Retry the original request
-      result = await baseQuery(args, api, extraOptions);
-    } else {
-      // Refresh failed, logout
-      api.dispatch({ type: 'auth/logout' });
-      // Force redirect to login with return URL so user can continue afterwards
-      if (typeof window !== 'undefined') {
-        const next = encodeURIComponent(window.location.pathname + window.location.search);
-        window.location.href = `/login?next=${next}`;
-      }
-    }
+const baseQueryWithReauth = async (args: any, queryApi: any, extraOptions: any) => {
+  let result = await baseQuery(args, queryApi, extraOptions);
+  const path = typeof args === 'string' ? args : args.url;
+  if (result.error?.status === 401 && !path.startsWith('/auth/')) {
+    const { default: authService } = await import('./authService');
+    const token = await authService.refreshToken();
+    if (token) result = await baseQuery(args, queryApi, extraOptions);
   }
-
   return result;
 };
 
 export const api = createApi({
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Claims', 'Policy', 'Users', 'Leaves', 'Holidays'],
+  tagTypes: ['Claims', 'Policy', 'Users', 'Leaves', 'Holidays', 'Grievances'],
   endpoints: (builder) => ({
     // Authentication
     token: builder.mutation({
@@ -129,6 +105,7 @@ export const api = createApi({
     // Policy
     getPolicy: builder.query({
       query: () => '/policy/current',
+      transformResponse: (response: any) => response.policy,
       providesTags: ['Policy'],
     }),
     updatePolicy: builder.mutation({
@@ -408,6 +385,61 @@ export const api = createApi({
       ],
     }),
 
+    // Grievances
+    getGrievanceMeta: builder.query({
+      query: () => '/feedback/meta',
+    }),
+    getGrievances: builder.query({
+      query: (params: { scope?: 'mine' | 'all'; status?: string; category?: string; feedbackType?: string } = {}) => ({
+        url: '/feedback',
+        params,
+      }),
+      providesTags: ['Grievances'],
+    }),
+    getGrievanceSummary: builder.query({
+      query: () => '/feedback/summary',
+      providesTags: ['Grievances'],
+    }),
+    getGrievance: builder.query({
+      query: (grievanceId: string) => `/feedback/${grievanceId}`,
+      providesTags: (result, error, grievanceId) => [{ type: 'Grievances', id: grievanceId }],
+    }),
+    createGrievance: builder.mutation({
+      query: ({ category, subject, description, incidentDate, files, feedbackType }: {
+        feedbackType?: string;
+        category: string;
+        subject: string;
+        description: string;
+        incidentDate?: string;
+        files: File[];
+      }) => {
+        const formData = new FormData();
+        formData.append('category', category);
+        if (feedbackType) formData.append('feedbackType', feedbackType);
+        formData.append('subject', subject);
+        formData.append('description', description);
+        if (incidentDate) formData.append('incidentDate', incidentDate);
+        files.forEach((file) => formData.append('files', file));
+        return {
+          url: '/feedback',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Grievances'],
+    }),
+    updateGrievanceStatus: builder.mutation({
+      query: ({ grievanceId, status, note }: { grievanceId: string; status: string; note?: string }) => ({
+        url: `/feedback/${grievanceId}/status`,
+        method: 'PATCH',
+        body: { status, note },
+      }),
+      invalidatesTags: (result, error, { grievanceId }) => [
+        { type: 'Grievances', id: grievanceId },
+        'Grievances',
+      ],
+    }),
+
     // Holidays
     getHolidays: builder.query({
       query: (params = {}) => ({
@@ -551,4 +583,12 @@ export const {
   useCreateHolidayMutation,
   useUpdateHolidayMutation,
   useDeleteHolidayMutation,
+
+  // Grievances
+  useGetGrievanceMetaQuery,
+  useGetGrievancesQuery,
+  useGetGrievanceSummaryQuery,
+  useGetGrievanceQuery,
+  useCreateGrievanceMutation,
+  useUpdateGrievanceStatusMutation,
 } = api;
