@@ -263,68 +263,46 @@ export default function ExecutiveDashboard() {
             {activeTab === 'personal' ? (
               <>
                 {/* Personal Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="ui-panel bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <FileText className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">My Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">{personalStats.total}</p>
-                      </div>
+                <div className="ui-kpi-grid mb-8">
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-blue-100 text-blue-600"><FileText size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">My Claims</p>
+                      <p className="ui-kpi-value">{personalStats.total}</p>
                     </div>
                   </div>
 
-                  <div className="ui-panel bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-yellow-100 rounded-lg">
-                        <Clock className="h-6 w-6 text-yellow-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Pending</p>
-                        <p className="text-2xl font-bold text-gray-900">{personalStats.pending}</p>
-                      </div>
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Clock size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Pending</p>
+                      <p className="ui-kpi-value">{personalStats.pending}</p>
                     </div>
                   </div>
 
-                  <div className="ui-panel bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <CheckCircle className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Approved</p>
-                        <p className="text-2xl font-bold text-gray-900">{personalStats.approved}</p>
-                      </div>
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-green-100 text-green-600"><CheckCircle size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Approved</p>
+                      <p className="ui-kpi-value">{personalStats.approved}</p>
                     </div>
                   </div>
 
-                  <div className="ui-panel bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-red-100 rounded-lg">
-                        <AlertCircle className="h-6 w-6 text-red-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Rejected</p>
-                        <p className="text-2xl font-bold text-gray-900">{personalStats.rejected}</p>
-                      </div>
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-red-100 text-red-600"><AlertCircle size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Rejected</p>
+                      <p className="ui-kpi-value">{personalStats.rejected}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Personal Total Amount Card */}
-                <div className="ui-panel bg-white rounded-lg shadow p-6 mb-8">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <DollarSign className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">My Total Claimed Amount</p>
-                      <p className="text-3xl font-bold text-green-600">
-                        ₹{personalStats.totalAmount.toLocaleString()}
-                      </p>
-                    </div>
+                <div className="ui-kpi-card mb-8">
+                  <span className="ui-kpi-icon bg-purple-100 text-purple-600"><DollarSign size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">My Total Claimed Amount</p>
+                    <p className="ui-kpi-value">₹{personalStats.totalAmount.toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -437,106 +415,72 @@ export default function ExecutiveDashboard() {
             ) : activeTab === 'organization' ? (
               <>
                 {/* Organization Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="ui-panel bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <Users className="h-6 w-6 text-purple-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Total Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">{orgStats.total}</p>
-                      </div>
+                <div className="ui-kpi-grid mb-8">
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-blue-100 text-blue-600"><Users size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Total Claims</p>
+                      <p className="ui-kpi-value">{orgStats.total}</p>
                     </div>
                   </div>
 
-                  <div className="ui-panel bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-yellow-100 rounded-lg">
-                        <Clock className="h-6 w-6 text-yellow-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Pending</p>
-                        <p className="text-2xl font-bold text-gray-900">{orgStats.pending}</p>
-                      </div>
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Clock size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Pending</p>
+                      <p className="ui-kpi-value">{orgStats.pending}</p>
                     </div>
                   </div>
 
-                  <div className="ui-panel bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <CheckCircle className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Approved</p>
-                        <p className="text-2xl font-bold text-gray-900">{orgStats.approved}</p>
-                      </div>
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-green-100 text-green-600"><CheckCircle size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Approved</p>
+                      <p className="ui-kpi-value">{orgStats.approved}</p>
                     </div>
                   </div>
 
-                  <div className="ui-panel bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-red-100 rounded-lg">
-                        <AlertCircle className="h-6 w-6 text-red-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Rejected</p>
-                        <p className="text-2xl font-bold text-gray-900">{orgStats.rejected}</p>
-                      </div>
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-red-100 text-red-600"><AlertCircle size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Rejected</p>
+                      <p className="ui-kpi-value">{orgStats.rejected}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Organization Total Amount Card */}
-                <div className="ui-panel bg-white rounded-lg shadow p-6 mb-8">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <DollarSign className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Organization Total Claimed Amount</p>
-                      <p className="text-3xl font-bold text-purple-600">
-                        ₹{orgStats.totalAmount.toLocaleString()}
-                      </p>
-                    </div>
+                <div className="ui-kpi-card mb-8">
+                  <span className="ui-kpi-icon bg-purple-100 text-purple-600"><DollarSign size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Organization Total Claimed Amount</p>
+                    <p className="ui-kpi-value">₹{orgStats.totalAmount.toLocaleString()}</p>
                   </div>
                 </div>
 
                 {/* Executive Claims Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center">
-                      <Clock className="h-6 w-6 text-blue-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-blue-600">Pending Financial Review</p>
-                        <p className="text-2xl font-bold text-blue-900">
-                          {claims.filter((claim: any) => claim.status === 'submitted').length}
-                        </p>
-                      </div>
+                <div className="ui-kpi-grid mb-6">
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-blue-100 text-blue-600"><Clock size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Pending Financial Review</p>
+                      <p className="ui-kpi-value">{claims.filter((claim: any) => claim.status === 'submitted').length}</p>
                     </div>
                   </div>
 
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center">
-                      <CheckCircle className="h-6 w-6 text-green-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-green-600">Pending Payment</p>
-                        <p className="text-2xl font-bold text-green-900">
-                          {claims.filter((claim: any) => claim.status === 'finance_approved').length}
-                        </p>
-                      </div>
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-green-100 text-green-600"><CheckCircle size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Pending Payment</p>
+                      <p className="ui-kpi-value">{claims.filter((claim: any) => claim.status === 'finance_approved').length}</p>
                     </div>
                   </div>
 
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <div className="flex items-center">
-                      <DollarSign className="h-6 w-6 text-purple-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-purple-600">Paid Claims</p>
-                        <p className="text-2xl font-bold text-purple-900">
-                          {claims.filter((claim: any) => claim.status === 'paid').length}
-                        </p>
-                      </div>
+                  <div className="ui-kpi-card">
+                    <span className="ui-kpi-icon bg-purple-100 text-purple-600"><DollarSign size={18} /></span>
+                    <div className="ui-kpi-body">
+                      <p className="ui-kpi-label">Paid Claims</p>
+                      <p className="ui-kpi-value">{claims.filter((claim: any) => claim.status === 'paid').length}</p>
                     </div>
                   </div>
                 </div>

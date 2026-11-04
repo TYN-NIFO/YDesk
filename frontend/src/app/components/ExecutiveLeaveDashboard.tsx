@@ -28,6 +28,16 @@ import PendingLeaveApprovals from "./PendingLeaveApprovals";
 const toLocalYmd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+// Icon + color per leave type, for the KPI-style distribution tiles. Falls
+// back to a neutral look for any type not in this list.
+const LEAVE_TYPE_THEME: Record<string, { icon: typeof Calendar; bg: string; color: string }> = {
+  "Planned Leave": { icon: Calendar, bg: "bg-green-100", color: "text-green-600" },
+  "Unplanned Leave": { icon: AlertCircle, bg: "bg-red-100", color: "text-red-600" },
+  Permission: { icon: Clock, bg: "bg-yellow-100", color: "text-yellow-600" },
+  WFH: { icon: List, bg: "bg-blue-100", color: "text-blue-600" },
+};
+const DEFAULT_LEAVE_TYPE_THEME = { icon: BarChart3, bg: "bg-gray-100", color: "text-gray-600" };
+
 interface ExecutiveLeaveDashboardProps {
   userRole: string;
   userEmail: string;
@@ -269,134 +279,72 @@ function ExecutiveOverviewView({
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Total Employees
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
-                  {employees.length}
-                </dd>
-              </dl>
-            </div>
+      <div className="ui-kpi-grid">
+        <div className="ui-kpi-card">
+          <span className="ui-kpi-icon bg-blue-100 text-blue-600"><Users size={18} /></span>
+          <div className="ui-kpi-body">
+            <p className="ui-kpi-label">Total Employees</p>
+            <p className="ui-kpi-value">{employees.length}</p>
           </div>
         </div>
 
-        <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-green-600" />
-              </div>
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Total Leave Days
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
-                  {summary.totalLeaveDays.toFixed(1)}
-                </dd>
-              </dl>
-            </div>
+        <div className="ui-kpi-card">
+          <span className="ui-kpi-icon bg-green-100 text-green-600"><Calendar size={18} /></span>
+          <div className="ui-kpi-body">
+            <p className="ui-kpi-label">Total Leave Days</p>
+            <p className="ui-kpi-value">{summary.totalLeaveDays.toFixed(1)}</p>
           </div>
         </div>
 
-        <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
-                <Clock className="w-5 h-5 text-yellow-600" />
-              </div>
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Employees on Leave
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
-                  {summary.employeesOnLeave}
-                </dd>
-              </dl>
-            </div>
+        <div className="ui-kpi-card">
+          <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Clock size={18} /></span>
+          <div className="ui-kpi-body">
+            <p className="ui-kpi-label">Employees on Leave</p>
+            <p className="ui-kpi-value">{summary.employeesOnLeave}</p>
           </div>
         </div>
 
-        <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-purple-600" />
-              </div>
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Avg. Leave per Employee
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
-                  {employees.length > 0
-                    ? (summary.totalLeaveDays / employees.length).toFixed(1)
-                    : "0.0"}
-                </dd>
-              </dl>
-            </div>
+        <div className="ui-kpi-card">
+          <span className="ui-kpi-icon bg-purple-100 text-purple-600"><BarChart3 size={18} /></span>
+          <div className="ui-kpi-body">
+            <p className="ui-kpi-label">Avg. Leave per Employee</p>
+            <p className="ui-kpi-value">
+              {employees.length > 0
+                ? (summary.totalLeaveDays / employees.length).toFixed(1)
+                : "0.0"}
+            </p>
           </div>
         </div>
       </div>
 
       {/* Leave Breakdown Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Planned Leave</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-              Leave
-            </span>
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-gray-900">
-            {plannedDays.toFixed(1)}
+      <div className="ui-kpi-grid">
+        <div className="ui-kpi-card">
+          <span className="ui-kpi-icon bg-green-100 text-green-600"><Calendar size={18} /></span>
+          <div className="ui-kpi-body">
+            <p className="ui-kpi-label">Planned Leave</p>
+            <p className="ui-kpi-value">{plannedDays.toFixed(1)}</p>
           </div>
         </div>
-        <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Unplanned Leave</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800">
-              Leave
-            </span>
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-gray-900">
-            {unplannedDays.toFixed(1)}
+        <div className="ui-kpi-card">
+          <span className="ui-kpi-icon bg-red-100 text-red-600"><AlertCircle size={18} /></span>
+          <div className="ui-kpi-body">
+            <p className="ui-kpi-label">Unplanned Leave</p>
+            <p className="ui-kpi-value">{unplannedDays.toFixed(1)}</p>
           </div>
         </div>
-        <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Permission</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
-              Leave-ish
-            </span>
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-gray-900">
-            {permissionDays.toFixed(1)}
+        <div className="ui-kpi-card">
+          <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Clock size={18} /></span>
+          <div className="ui-kpi-body">
+            <p className="ui-kpi-label">Permission</p>
+            <p className="ui-kpi-value">{permissionDays.toFixed(1)}</p>
           </div>
         </div>
-        <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">WFH</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-              Not Leave
-            </span>
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-gray-900">
-            {wfhDays.toFixed(1)}
+        <div className="ui-kpi-card">
+          <span className="ui-kpi-icon bg-blue-100 text-blue-600"><List size={18} /></span>
+          <div className="ui-kpi-body">
+            <p className="ui-kpi-label">WFH</p>
+            <p className="ui-kpi-value">{wfhDays.toFixed(1)}</p>
           </div>
         </div>
       </div>
@@ -936,20 +884,23 @@ function ExecutiveAnalyticsView({
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           Leave Distribution Analysis
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="ui-kpi-grid">
           {Object.entries(summary.leavesByType).map(
-            ([type, count]: [string, any]) => (
-              <div key={type} className="ui-detail-summary text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">
-                  {Number(count).toFixed(1)}
+            ([type, count]: [string, any]) => {
+              const theme = LEAVE_TYPE_THEME[type] || DEFAULT_LEAVE_TYPE_THEME;
+              return (
+                <div key={type} className="ui-kpi-card">
+                  <span className={`ui-kpi-icon ${theme.bg} ${theme.color}`}><theme.icon size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">{type}</p>
+                    <p className="ui-kpi-value">{Number(count).toFixed(1)}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {((Number(count) / summary.totalLeaveDays) * 100).toFixed(1)}% of total
+                    </p>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600">{type}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {((Number(count) / summary.totalLeaveDays) * 100).toFixed(1)}%
-                  of total
-                </div>
-              </div>
-            )
+              );
+            }
           )}
         </div>
       </div>

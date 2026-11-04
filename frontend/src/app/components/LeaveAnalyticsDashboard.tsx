@@ -4,10 +4,22 @@ import { useState } from 'react';
 import { useGetLeaveAnalyticsQuery, useGetTodayLeavesQuery, useGetLeavesByDateRangeQuery, useGetHolidaysQuery } from '@/lib/api';
 import LoadingSpinner from './LoadingSpinner';
 import BulkLeaveUpload from './BulkLeaveUpload';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, Briefcase, Calendar, ChevronLeft, ChevronRight, Clock, AlertCircle, Plane, RefreshCw, Users, List } from 'lucide-react';
 
 const toLocalYmd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Icon + color per leave type, for the KPI-style breakdown tiles.
+const LEAVE_TYPE_THEME: Record<string, { icon: typeof Calendar; bg: string; color: string }> = {
+  'Planned Leave': { icon: Calendar, bg: 'bg-green-100', color: 'text-green-600' },
+  'Unplanned Leave': { icon: AlertCircle, bg: 'bg-red-100', color: 'text-red-600' },
+  Permission: { icon: Clock, bg: 'bg-yellow-100', color: 'text-yellow-600' },
+  WFH: { icon: List, bg: 'bg-blue-100', color: 'text-blue-600' },
+  'Business Trip': { icon: Plane, bg: 'bg-purple-100', color: 'text-purple-600' },
+  OD: { icon: Briefcase, bg: 'bg-indigo-100', color: 'text-indigo-600' },
+  Flexi: { icon: RefreshCw, bg: 'bg-pink-100', color: 'text-pink-600' },
+};
+const DEFAULT_LEAVE_TYPE_THEME = { icon: BarChart3, bg: 'bg-gray-100', color: 'text-gray-600' };
 
 interface AnalyticsDashboardProps {
   userRole: string;
@@ -136,133 +148,64 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
     return (
       <div className="space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Employees</dt>
-                  <dd className="text-lg font-medium text-gray-900">{employees.length}</dd>
-                </dl>
-              </div>
+        <div className="ui-kpi-grid">
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-blue-100 text-blue-600"><Users size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Total Employees</p>
+              <p className="ui-kpi-value">{employees.length}</p>
             </div>
           </div>
 
-          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Leave Days</dt>
-                  <dd className="text-lg font-medium text-gray-900">{summary.totalLeaveDays.toFixed(1)}</dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-green-100 text-green-600"><Calendar size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Total Leave Days</p>
+              <p className="ui-kpi-value">{summary.totalLeaveDays.toFixed(1)}</p>
             </div>
           </div>
 
-          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Employees on Leave</dt>
-                  <dd className="text-lg font-medium text-gray-900">{summary.employeesOnLeave}</dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Clock size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Employees on Leave</p>
+              <p className="ui-kpi-value">{summary.employeesOnLeave}</p>
             </div>
           </div>
 
-          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Avg. Leave per Employee</dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {employees.length > 0 ? (summary.totalLeaveDays / employees.length).toFixed(1) : '0.0'}
-                  </dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-purple-100 text-purple-600"><BarChart3 size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Avg. Leave per Employee</p>
+              <p className="ui-kpi-value">
+                {employees.length > 0 ? (summary.totalLeaveDays / employees.length).toFixed(1) : '0.0'}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Leave Breakdown Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Planned Leave</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">Leave</span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-gray-900">{plannedDays.toFixed(1)}</div>
-          </div>
-          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Unplanned Leave</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800">Leave</span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-gray-900">{unplannedDays.toFixed(1)}</div>
-          </div>
-          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Permission</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Leave-ish</span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-gray-900">{permissionDays.toFixed(1)}</div>
-          </div>
-          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">WFH</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Not Leave</span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-gray-900">{wfhDays.toFixed(1)}</div>
-          </div>
-          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Business Trip</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">Not Leave</span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-gray-900">{businessTripDays.toFixed(1)}</div>
-          </div>
-          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">OD</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">Not Leave</span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-gray-900">{odDays.toFixed(1)}</div>
-          </div>
-          <div className="ui-panel bg-white p-4 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Flexi</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-pink-100 text-pink-800">Not Leave</span>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-gray-900">{flexiDays.toFixed(1)}</div>
-          </div>
+        <div className="ui-kpi-grid">
+          {([
+            ['Planned Leave', plannedDays],
+            ['Unplanned Leave', unplannedDays],
+            ['Permission', permissionDays],
+            ['WFH', wfhDays],
+            ['Business Trip', businessTripDays],
+            ['OD', odDays],
+            ['Flexi', flexiDays],
+          ] as [string, number][]).map(([label, value]) => {
+            const theme = LEAVE_TYPE_THEME[label] || DEFAULT_LEAVE_TYPE_THEME;
+            return (
+              <div key={label} className="ui-kpi-card">
+                <span className={`ui-kpi-icon ${theme.bg} ${theme.color}`}><theme.icon size={18} /></span>
+                <div className="ui-kpi-body">
+                  <p className="ui-kpi-label">{label}</p>
+                  <p className="ui-kpi-value">{value.toFixed(1)}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Today's Status */}

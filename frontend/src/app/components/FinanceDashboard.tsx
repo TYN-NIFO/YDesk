@@ -284,55 +284,33 @@ export default function FinanceDashboard() {
           <>
             {/* Stats */}
             {!statsLoading && stats && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="ui-panel bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <FileText className="h-8 w-8 text-blue-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Total Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.totalClaims || 0}</p>
-                      </div>
-                    </div>
+              <div className="ui-kpi-grid mb-8">
+                <div className="ui-kpi-card">
+                  <span className="ui-kpi-icon bg-blue-100 text-blue-600"><FileText size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Total Claims</p>
+                    <p className="ui-kpi-value">{stats.totalClaims || 0}</p>
                   </div>
                 </div>
-                <div className="ui-panel bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <DollarSign className="h-8 w-8 text-green-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          ₹{stats.totalAmount?.toLocaleString() || 0}
-                        </p>
-                      </div>
-                    </div>
+                <div className="ui-kpi-card">
+                  <span className="ui-kpi-icon bg-purple-100 text-purple-600"><DollarSign size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Total Amount</p>
+                    <p className="ui-kpi-value">₹{stats.totalAmount?.toLocaleString() || 0}</p>
                   </div>
                 </div>
-                <div className="ui-panel bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <CheckCircle className="h-8 w-8 text-green-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Paid Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {getStatusCount('paid')}
-                        </p>
-                      </div>
-                    </div>
+                <div className="ui-kpi-card">
+                  <span className="ui-kpi-icon bg-green-100 text-green-600"><CheckCircle size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Paid Claims</p>
+                    <p className="ui-kpi-value">{getStatusCount('paid')}</p>
                   </div>
                 </div>
-                <div className="ui-panel bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <Clock className="h-8 w-8 text-yellow-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Pending Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {getStatusCount('submitted')}
-                        </p>
-                      </div>
-                    </div>
+                <div className="ui-kpi-card">
+                  <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Clock size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Pending Claims</p>
+                    <p className="ui-kpi-value">{getStatusCount('submitted')}</p>
                   </div>
                 </div>
               </div>

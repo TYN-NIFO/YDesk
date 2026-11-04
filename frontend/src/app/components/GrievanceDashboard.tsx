@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { AlertCircle, ArrowLeft, BarChart3, Download, FileText, Inbox, Paperclip, Plus, ShieldCheck, X } from 'lucide-react';
+import { AlertCircle, AlignLeft, ArrowLeft, BarChart3, CheckCircle, Clock, Download, FileText, Inbox, Paperclip, Plus, ShieldCheck, X } from 'lucide-react';
 import { RootState } from '@/lib/store';
 import { PageHeading, FormSection, Field } from './ui/WorkspaceUI';
+import LoadingSpinner from './LoadingSpinner';
 import {
   useGetGrievanceMetaQuery,
   useGetGrievancesQuery,
@@ -63,6 +64,35 @@ export default function GrievanceDashboard() {
     ...(access ? [{ key: 'summary' as Tab, label: 'Summary', icon: BarChart3 }] : []),
   ];
 
+  // The form and the detail view are full-screen tasks, like the rest of the
+  // workspace (e.g. the claim form): they replace the portal chrome instead
+  // of stacking a second heading underneath it.
+  if (showForm) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <GrievanceForm categories={meta?.categories || []} onClose={() => setShowForm(false)} />
+        </div>
+      </div>
+    );
+  }
+
+  if (openId) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <GrievanceDetail
+            grievanceId={openId}
+            isHandler={access === 'handler'}
+            transitions={meta?.transitions || {}}
+            currentUserId={user?._id}
+            onBack={() => setOpenId(null)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="ui-panel bg-white shadow-sm border-b border-gray-200">
@@ -75,28 +105,27 @@ export default function GrievanceDashboard() {
                 <p className="text-sm text-gray-600">Share ideas, appreciation, or concerns, and follow the response</p>
               </div>
             </div>
-            {!showForm && !openId && (
-              <button onClick={() => setShowForm(true)} className="btn btn-primary flex items-center">
-                <Plus className="h-4 w-4 mr-2" />
-                Share feedback
-              </button>
-            )}
+            <button onClick={() => setShowForm(true)} className="ui-button ui-button-primary">
+              <Plus size={16} />
+              Share feedback
+            </button>
           </div>
         </div>
       </div>
 
-      {tabs.length > 1 && !showForm && !openId && (
+      {tabs.length > 1 && (
         <div className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <nav className="-mb-px flex space-x-8 overflow-x-auto">
+            <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Feedback sections">
               {tabs.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`ui-tab ${`flex items-center space-x-2 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${tab === t.key
+                  aria-current={tab === t.key ? 'page' : undefined}
+                  className={`ui-tab flex items-center space-x-2 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${tab === t.key
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}`}
+                    }`}
                 >
                   <t.icon className="h-4 w-4" />
                   <span>{t.label}</span>
@@ -108,18 +137,8 @@ export default function GrievanceDashboard() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {showForm ? (
-          <GrievanceForm categories={meta?.categories || []} onClose={() => setShowForm(false)} />
-        ) : openId ? (
-          <GrievanceDetail
-            grievanceId={openId}
-            isHandler={access === 'handler'}
-            transitions={meta?.transitions || {}}
-            currentUserId={user?._id}
-            onBack={() => setOpenId(null)}
-          />
-        ) : tab === 'summary' && access ? (
-          <GrievanceSummary />
+        {tab === 'summary' && access ? (
+          <GrievanceSummary onOpen={setOpenId} />
         ) : (
           <GrievanceList
             scope={tab === 'all' && access === 'handler' ? 'all' : 'mine'}
@@ -197,14 +216,14 @@ function GrievanceForm({ categories, onClose }: { categories: string[]; onClose:
           <div className="grid sm:grid-cols-2 gap-5"><Field label="Category" htmlFor="grv-category" required><select id="grv-category" className="ui-control" value={category} onChange={event => setCategory(event.target.value)} required><option value="">Choose a category</option>{categories.map(category => <option key={category}>{category}</option>)}</select></Field><Field label="Relevant date" htmlFor="grv-date" hint="Optional. Choose the date if you know it."><input id="grv-date" type="date" className="ui-control" max={today} value={incidentDate} onChange={event => setIncidentDate(event.target.value)} /></Field></div>
           <div className="mt-5"><Field label="Subject" htmlFor="grv-subject" required hint="A short summary in 5–150 characters."><input id="grv-subject" className="ui-control" value={subject} onChange={event => setSubject(event.target.value)} minLength={5} maxLength={150} required placeholder="What would you like the team to review?" /></Field></div>
         </FormSection>
-        <FormSection title="Tell us more" description="Add the details that will help your reviewers understand your feedback." icon={FileText}><Field label="Description" htmlFor="grv-description" required hint={`${description.length}/5,000 characters · at least 20 characters`}><textarea id="grv-description" className="ui-control" style={{ minHeight: 200 }} value={description} onChange={event => setDescription(event.target.value)} minLength={20} maxLength={5000} required placeholder="Share your idea, what went well, or what you would like to improve." /></Field></FormSection>
+        <FormSection title="Tell us more" description="Add the details that will help your reviewers understand your feedback." icon={AlignLeft}><Field label="Description" htmlFor="grv-description" required hint={`${description.length}/5,000 characters · at least 20 characters`}><textarea id="grv-description" className="ui-control" style={{ minHeight: 200 }} value={description} onChange={event => setDescription(event.target.value)} minLength={20} maxLength={5000} required placeholder="Share your idea, what went well, or what you would like to improve." /></Field></FormSection>
         <FormSection title="Supporting documents" description="Attach documents that help explain the situation. This is optional." icon={Paperclip}>
           <label htmlFor="grv-attachments" className="ui-upload"><Paperclip size={22} /><span>Choose supporting files</span><small>PDF, JPG, PNG · 3 files maximum · 4MB each</small><input id="grv-attachments" className="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple disabled={files.length >= MAX_FILES} onChange={event => { addFiles(event.target.files); event.target.value = ''; }} /></label>
           <div className="space-y-2 mt-3">{files.map((file, index) => <div className="ui-receipt" key={`${file.name}-${index}`}><span className="ui-receipt-name"><FileText size={16} /><span>{file.name}</span></span><span className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</span><button type="button" className="ui-icon-button" aria-label={`Remove ${file.name}`} onClick={() => setFiles(previous => previous.filter((_, position) => position !== index))}><X size={15} /></button></div>)}</div>
         </FormSection>
         <div className="ui-form-actions"><button type="button" onClick={onClose} disabled={isLoading} className="ui-button ui-button-secondary">Cancel</button><button type="submit" disabled={isLoading} className="ui-button ui-button-primary"><ShieldCheck size={16} />{isLoading ? 'Submitting feedback…' : 'Submit feedback'}</button></div>
       </div>
-      <aside className="ui-summary"><h2 className="ui-summary-heading">Every idea matters</h2><div className="ui-summary-help"><ShieldCheck className="text-blue-700 mb-4" size={26} /><h3>Who can see your feedback?</h3><p>You and the designated feedback reviewers can read the details and attachments. Leadership summary access shows counts, without your description.</p><h3 className="mt-5">This is a named report</h3><p>Your name is shared with the designated feedback reviewers so they can follow up with you.</p><h3 className="mt-5">Stay informed</h3><p>Follow the status and response history in My feedback after submitting.</p></div></aside>
+      <aside className="ui-summary"><h2 className="ui-summary-heading">Every idea matters</h2><div className="ui-summary-help"><ShieldCheck className="text-blue-700 mb-4" size={26} /><h3>Who can see your feedback?</h3><p>You and the designated feedback reviewers can read the details and attachments. Leadership summary access sees aggregate counts, and can open an individual item's details and progress when needed.</p><h3 className="mt-5">This is a named report</h3><p>Your name is shared with the designated feedback reviewers so they can follow up with you.</p><h3 className="mt-5">Stay informed</h3><p>Follow the status and response history in My feedback after submitting.</p></div></aside>
     </form>
   </div>;
 }
@@ -226,13 +245,13 @@ function GrievanceList({ scope, categories, onOpen }: { scope: 'mine' | 'all'; c
       <div className="card-header flex flex-wrap gap-3 items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">{scope === 'all' ? 'All feedback' : 'My feedback'}</h2>
         <div className="flex flex-wrap gap-2">
-          <select aria-label="Filter by feedback type" className="ui-control input !w-auto !p-2 text-sm" value={typeFilter} onChange={event => setTypeFilter(event.target.value)}><option value="">All feedback types</option>{Object.entries({ general: "General feedback", suggestion: "Suggestion", appreciation: "Appreciation", concern: "Concern" }).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="ui-control input !w-auto !p-2 text-sm" aria-label="Filter by status">
+          <select aria-label="Filter by feedback type" className="ui-control !w-auto" value={typeFilter} onChange={event => setTypeFilter(event.target.value)}><option value="">All feedback types</option>{Object.entries({ general: "General feedback", suggestion: "Suggestion", appreciation: "Appreciation", concern: "Concern" }).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="ui-control !w-auto" aria-label="Filter by status">
             <option value="">All statuses</option>
             {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           {scope === 'all' && (
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="ui-control input !w-auto !p-2 text-sm" aria-label="Filter by category">
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="ui-control !w-auto" aria-label="Filter by category">
               <option value="">All categories</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -241,12 +260,12 @@ function GrievanceList({ scope, categories, onOpen }: { scope: 'mine' | 'all'; c
       </div>
 
       {isLoading ? (
-        <div className="p-8 text-center text-gray-500">Loading feedback...</div>
+        <div className="p-8"><LoadingSpinner text="Loading feedback…" /></div>
       ) : error ? (
         <div className="p-8 text-center text-red-600">
           <AlertCircle className="h-6 w-6 mx-auto mb-2" />
           {errorMessage(error, 'Failed to load feedback')}
-          <div><button onClick={() => refetch()} className="btn btn-secondary mt-3">Retry</button></div>
+          <div><button onClick={() => refetch()} className="ui-button ui-button-secondary mt-3">Retry</button></div>
         </div>
       ) : grievances.length === 0 ? (
         <div className="p-8 text-center text-gray-500">
@@ -300,12 +319,12 @@ function GrievanceDetail({ grievanceId, isHandler, transitions, currentUserId, o
   const [note, setNote] = useState('');
   const grievance = data?.grievance;
 
-  if (isLoading) return <div className="p-8 text-center text-gray-500">Loading feedback...</div>;
+  if (isLoading) return <div className="p-8"><LoadingSpinner text="Loading feedback…" /></div>;
   if (error || !grievance) {
     return (
       <div className="card p-8 text-center text-red-600">
         {errorMessage(error, 'Feedback not found')}
-        <div><button onClick={onBack} className="btn btn-secondary mt-3">Back</button></div>
+        <div><button onClick={onBack} className="ui-button ui-button-secondary mt-3">Back</button></div>
       </div>
     );
   }
@@ -353,8 +372,8 @@ function GrievanceDetail({ grievanceId, isHandler, transitions, currentUserId, o
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <button onClick={onBack} className="ui-button ui-button-secondary flex items-center text-sm text-gray-600 hover:text-gray-900">
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back to list
+      <button onClick={onBack} className="ui-button ui-button-secondary">
+        <ArrowLeft size={16} /> Back to list
       </button>
 
       <div className="card">
@@ -416,23 +435,18 @@ function GrievanceDetail({ grievanceId, isHandler, transitions, currentUserId, o
         <form onSubmit={submitStatus} className="card">
           <div className="card-header"><h3 className="font-semibold text-gray-900">Update status</h3></div>
           <div className="card-body space-y-4">
-            <div>
-              <label htmlFor="grv-status" className="block text-sm font-medium text-gray-700 mb-1">New status</label>
-              <select id="grv-status" value={nextStatus} onChange={(e) => setNextStatus(e.target.value)} className="ui-control input">
+            <Field label="New status" htmlFor="grv-status">
+              <select id="grv-status" value={nextStatus} onChange={(e) => setNextStatus(e.target.value)} className="ui-control">
                 <option value="">Select a status</option>
                 {options.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
-            </div>
-            <div>
-              <label htmlFor="grv-note" className="block text-sm font-medium text-gray-700 mb-1">
-                Note to the employee{needsNote ? ' *' : ''}
-              </label>
-              <textarea id="grv-note" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} className="ui-control input" placeholder={needsNote ? 'Explain the outcome' : 'Optional'} />
-              <p className="text-xs text-gray-500 mt-1">The employee is emailed this note with the new status.</p>
-            </div>
+            </Field>
+            <Field label="Note to the employee" htmlFor="grv-note" required={needsNote} hint="The employee is emailed this note with the new status.">
+              <textarea id="grv-note" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} className="ui-control" placeholder={needsNote ? 'Explain the outcome' : 'Optional'} />
+            </Field>
             <div className="flex justify-end">
-              <button type="submit" disabled={!nextStatus || isUpdating} className="btn btn-primary disabled:bg-gray-400">
-                {isUpdating ? 'Saving...' : 'Update status'}
+              <button type="submit" disabled={!nextStatus || isUpdating} className="ui-button ui-button-primary">
+                {isUpdating ? 'Saving…' : 'Update status'}
               </button>
             </div>
           </div>
@@ -445,28 +459,33 @@ function GrievanceDetail({ grievanceId, isHandler, transitions, currentUserId, o
   );
 }
 
-function GrievanceSummary() {
+function GrievanceSummary({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, isLoading, error } = useGetGrievanceSummaryQuery(undefined);
-  if (isLoading) return <div className="p-8 text-center text-gray-500">Loading summary...</div>;
+  if (isLoading) return <div className="p-8"><LoadingSpinner text="Loading summary…" /></div>;
   if (error || !data) return <div className="card p-8 text-center text-red-600">{errorMessage(error, 'Failed to load summary')}</div>;
 
   const open = (data.byStatus.submitted || 0) + (data.byStatus.under_review || 0);
   const tiles = [
-    { label: 'Total raised', value: data.total },
-    { label: 'Open', value: open },
-    { label: 'Resolved / closed', value: (data.byStatus.resolved || 0) + (data.byStatus.closed || 0) },
-    { label: 'Avg. days to resolve', value: data.averageResolutionDays ?? '—' },
+    { label: 'Total raised', value: data.total, icon: FileText, iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
+    { label: 'Open', value: open, icon: Clock, iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600' },
+    { label: 'Resolved / closed', value: (data.byStatus.resolved || 0) + (data.byStatus.closed || 0), icon: CheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-600' },
+    { label: 'Avg. days to resolve', value: data.averageResolutionDays != null ? `${data.averageResolutionDays} d` : '—', icon: BarChart3, iconBg: 'bg-purple-100', iconColor: 'text-purple-600' },
   ];
   const categories = Object.entries(data.byCategory as Record<string, number>).sort((a, b) => b[1] - a[1]);
   const maxCount = Math.max(1, ...categories.map(([, count]) => count));
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="ui-kpi-grid">
         {tiles.map((t) => (
-          <div key={t.label} className="card p-5">
-            <p className="text-sm text-gray-600">{t.label}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{t.value}</p>
+          <div key={t.label} className="ui-kpi-card">
+            <span className={`ui-kpi-icon ${t.iconBg} ${t.iconColor}`}>
+              <t.icon size={18} />
+            </span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">{t.label}</p>
+              <p className="ui-kpi-value">{t.value}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -501,8 +520,10 @@ function GrievanceSummary() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {data.open.map((g: any) => (
-                    <tr key={g.grievanceId}>
-                      <td className="ui-table-td px-4 py-2 font-mono text-xs whitespace-nowrap">{g.grievanceId}</td>
+                    <tr key={g.grievanceId} onClick={() => onOpen(g.grievanceId)} className="hover:bg-gray-50 cursor-pointer">
+                      <td className="ui-table-td px-4 py-2 font-mono text-xs whitespace-nowrap">
+                        <button onClick={(e) => { e.stopPropagation(); onOpen(g.grievanceId); }} className="text-blue-600 hover:underline">{g.grievanceId}</button>
+                      </td>
                       <td className="ui-table-td px-4 py-2 whitespace-nowrap">{g.category}</td>
                       <td className="ui-table-td px-4 py-2"><StatusBadge status={g.status} /></td>
                       <td className={`ui-table-td ${`px-4 py-2 text-right whitespace-nowrap ${g.ageDays > 14 ? 'text-red-600 font-medium' : 'text-gray-700'}`}`}>{g.ageDays} d</td>
@@ -514,7 +535,7 @@ function GrievanceSummary() {
           )}
         </div>
       </div>
-      <p className="text-xs text-gray-500">Counts only. Names and details are visible to the feedback reviewers.</p>
+      <p className="text-xs text-gray-500">Click an ID to see its full details and progress.</p>
     </div>
   );
 }

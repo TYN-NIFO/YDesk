@@ -140,68 +140,36 @@ export default function EmployeeLeaveDashboard({ userId, forceView }: EmployeeLe
 
       {/* Year Summary Cards */}
       {yearSummary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Leave Days ({selectedYear})</dt>
-                  <dd className="text-lg font-medium text-gray-900">{yearSummary.totalLeaveDays}</dd>
-                </dl>
-              </div>
+        <div className="ui-kpi-grid">
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-blue-100 text-blue-600"><Calendar size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Total Leave Days ({selectedYear})</p>
+              <p className="ui-kpi-value">{yearSummary.totalLeaveDays}</p>
             </div>
           </div>
 
-          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-green-600" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">WFH Days</dt>
-                  <dd className="text-lg font-medium text-gray-900">{yearSummary.wfhDays}</dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-green-100 text-green-600"><Calendar size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">WFH Days</p>
+              <p className="ui-kpi-value">{yearSummary.wfhDays}</p>
             </div>
           </div>
 
-          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-yellow-600" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Permission Hours</dt>
-                  <dd className="text-lg font-medium text-gray-900">{yearSummary.permissionHours}</dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Calendar size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Permission Hours</p>
+              <p className="ui-kpi-value">{yearSummary.permissionHours}</p>
             </div>
           </div>
 
-          <div className="ui-panel bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
-                  <List className="w-5 h-5 text-purple-600" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Requests</dt>
-                  <dd className="text-lg font-medium text-gray-900">{monthlyLeaves.length}</dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-purple-100 text-purple-600"><List size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Total Requests</p>
+              <p className="ui-kpi-value">{monthlyLeaves.length}</p>
             </div>
           </div>
         </div>

@@ -19,8 +19,9 @@ const isOwner = (grievance, user) =>
 const asString = (value) => (typeof value === 'string' ? value.trim() : '');
 
 // Loads the grievance named in the URL if the caller may see it: the person
-// who raised it, or a grievance handler. Anyone else gets 404, so grievance
-// IDs can't be probed.
+// who raised it, a grievance handler, or someone with summary (leadership)
+// access drilling into an ID from the summary page. Anyone else gets 404, so
+// grievance IDs can't be probed.
 async function loadVisibleGrievance(req, res) {
   const { grievanceId } = req.params;
   if (!GRIEVANCE_ID_PATTERN.test(grievanceId)) {
@@ -30,7 +31,7 @@ async function loadVisibleGrievance(req, res) {
   const grievance = await Grievance.findOne({ grievanceId })
     .populate('employeeId', 'name email department')
     .populate('statusHistory.changedBy', 'name');
-  if (!grievance || !(isOwner(grievance, req.user) || isHandler(req.user))) {
+  if (!grievance || !(isOwner(grievance, req.user) || canSeeSummary(req.user))) {
     res.status(404).json({ error: 'Feedback not found' });
     return null;
   }

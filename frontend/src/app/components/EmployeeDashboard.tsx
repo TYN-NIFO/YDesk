@@ -97,10 +97,10 @@ export default function EmployeeDashboard() {
   }
 
   const statTiles = [
-    { label: 'Total claims', value: stats.total, icon: FileText },
-    { label: 'Awaiting review', value: stats.pending, icon: Clock },
-    { label: 'Approved', value: stats.approved, icon: CheckCircle },
-    { label: 'Needs attention', value: stats.rejected, icon: AlertCircle },
+    { label: 'Total claims', value: stats.total, icon: FileText, iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
+    { label: 'Awaiting review', value: stats.pending, icon: Clock, iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600' },
+    { label: 'Approved', value: stats.approved, icon: CheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-600' },
+    { label: 'Needs attention', value: stats.rejected, icon: AlertCircle, iconBg: 'bg-red-100', iconColor: 'text-red-600' },
   ];
 
   return (
@@ -143,12 +143,14 @@ export default function EmployeeDashboard() {
         <div className="space-y-6">
           {/* Statistics */}
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="ui-kpi-grid">
               {statTiles.map((tile) => (
-                <div key={tile.label} className="ui-panel p-5">
-                  <span className="ui-section-icon"><tile.icon size={18} /></span>
-                  <p className="text-xs text-[var(--ui-muted)] mt-4">{tile.label}</p>
-                  <p className="text-2xl font-semibold text-[var(--ui-ink)] mt-1 tabular-nums">{tile.value}</p>
+                <div key={tile.label} className="ui-kpi-card">
+                  <span className={`ui-kpi-icon ${tile.iconBg} ${tile.iconColor}`}><tile.icon size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">{tile.label}</p>
+                    <p className="ui-kpi-value">{tile.value}</p>
+                  </div>
                 </div>
               ))}
             </div>
