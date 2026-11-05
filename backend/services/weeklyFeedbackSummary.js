@@ -1,20 +1,40 @@
 import Grievance, { GRIEVANCE_CATEGORIES } from '../models/Grievance.js';
 import User from '../models/User.js';
 import WeeklySummaryDelivery from '../models/WeeklySummaryDelivery.js';
+import WeeklyReport from '../models/WeeklyReport.js';
 import emailService from './emailService.js';
 import sendgridEmailService from './sendgridEmailService.js';
 
 const indiaOffset = 330 * 60000;
+const staleSendingMs = 10 * 60000;
 const templateVersion = 'v2';
 const perCategoryLimit = 10;
 const subjectLimit = 120;
 const statusLabels = { submitted: 'Submitted', under_review: 'Under review', resolved: 'Resolved', closed: 'Closed' };
 
-export function summaryWeek(now = new Date()) {
+function mondayStart(now) {
   const monday = new Date(now.getTime() + indiaOffset);
   monday.setUTCDate(monday.getUTCDate() - (monday.getUTCDay() + 6) % 7);
   monday.setUTCHours(0, 0, 0, 0);
-  return { start: new Date(monday.getTime() - indiaOffset), end: now };
+  return new Date(monday.getTime() - indiaOffset);
+}
+
+export function summaryWeek(now = new Date()) {
+  return { start: mondayStart(now), end: now };
+}
+
+async function resolveReport(now, persist) {
+  const week = mondayStart(now);
+  const existing = await WeeklyReport.findOne({ week }).lean();
+  if (existing) return existing;
+  const previous = await WeeklyReport.findOne({ status: 'sent' }).sort({ periodEnd: -1 }).lean();
+  const periodStart = previous ? previous.periodEnd : week;
+  if (!persist) return { week, periodStart, periodEnd: now, status: 'pending' };
+  return WeeklyReport.findOneAndUpdate(
+    { week },
+    { $setOnInsert: { periodStart, periodEnd: now, status: 'pending' } },
+    { upsert: true, new: true }
+  ).lean();
 }
 
 export function mailIsConfigured() {
@@ -28,8 +48,8 @@ const clip = value => {
   return text.length > subjectLimit ? `${text.slice(0, subjectLimit - 1)}…` : text;
 };
 
-export async function buildWeeklyFeedbackSummary(now = new Date()) {
-  const { start, end } = summaryWeek(now);
+export async function buildWeeklyFeedbackSummary(now = new Date(), period = summaryWeek(now)) {
+  const { start, end } = period;
   const inWindow = { $gte: start, $lte: end };
   const [received, resolved, open, raised, touched] = await Promise.all([
     Grievance.countDocuments({ createdAt: inWindow }),
@@ -90,7 +110,7 @@ export async function buildWeeklyFeedbackSummary(now = new Date()) {
     + `<p><a href="${escapeHtml(url.href)}">Open the feedback portal</a></p>`
     + `<p style="font-size:11px;color:#888">Template ${templateVersion}</p></div>`;
   return {
-    week: start, end, received, resolved, open,
+    received, resolved, open,
     subject: `YDesk weekly feedback summary: ${range}`,
     text,
     html
@@ -98,21 +118,32 @@ export async function buildWeeklyFeedbackSummary(now = new Date()) {
 }
 
 export async function sendWeeklyFeedbackSummary({ now = new Date(), dryRun = true, send } = {}) {
-  const summary = await buildWeeklyFeedbackSummary(now);
+  if (!dryRun) {
+    if (process.env.WEEKLY_SUMMARY_ENABLED !== 'true') throw new Error('Set WEEKLY_SUMMARY_ENABLED=true before sending summaries');
+    if (!send && !mailIsConfigured()) throw new Error('Configure SendGrid or SMTP before sending summaries');
+  }
+  const report = await resolveReport(now, !dryRun);
+  const summary = await buildWeeklyFeedbackSummary(now, { start: report.periodStart, end: report.periodEnd });
   const recipients = await User.find({ isActive: true, grievanceAccess: { $in: ['handler', 'summary'] } }).select('_id email');
   const allowlist = (process.env.WEEKLY_SUMMARY_RECIPIENTS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
   const eligible = recipients.filter(user => !allowlist.length || allowlist.includes(user.email));
-  const result = { week: summary.week.toISOString(), recipients: eligible.length, sent: 0, skipped: 0, failed: 0, dryRun };
+  const result = { week: report.week.toISOString(), recipients: eligible.length, sent: 0, skipped: 0, failed: 0, dryRun };
   if (dryRun) return result;
-  if (process.env.WEEKLY_SUMMARY_ENABLED !== 'true') throw new Error('Set WEEKLY_SUMMARY_ENABLED=true before sending summaries');
-  if (!send && !mailIsConfigured()) throw new Error('Configure SendGrid or SMTP before sending summaries');
+  if (report.status === 'sent') {
+    result.skipped = eligible.length;
+    return result;
+  }
   const deliver = send || (message => (process.env.SENDGRID_API_KEY ? sendgridEmailService : emailService).sendEmail(message));
   await WeeklySummaryDelivery.init();
   for (const user of eligible) {
     let delivery;
     try {
       delivery = await WeeklySummaryDelivery.findOneAndUpdate(
-        { week: summary.week, userId: user._id, status: 'failed' },
+        {
+          week: report.week,
+          userId: user._id,
+          $or: [{ status: 'failed' }, { status: 'sending', updatedAt: { $lt: new Date(Date.now() - staleSendingMs) } }]
+        },
         { $set: { status: 'sending', error: '' } },
         { upsert: true, new: true }
       );
@@ -129,5 +160,6 @@ export async function sendWeeklyFeedbackSummary({ now = new Date(), dryRun = tru
       result.failed++;
     }
   }
+  if (result.failed === 0) await WeeklyReport.updateOne({ _id: report._id }, { $set: { status: 'sent', sentAt: new Date() } });
   return result;
 }

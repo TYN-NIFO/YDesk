@@ -498,3 +498,33 @@ test('failed weekly deliveries can be retried without resending successful recip
     else delete process.env.WEEKLY_SUMMARY_ENABLED;
   }
 });
+
+test('changes made after one report are included in the next report without gaps', async () => {
+  const previous = process.env.WEEKLY_SUMMARY_ENABLED;
+  process.env.WEEKLY_SUMMARY_ENABLED = 'true';
+  await User.updateMany({}, { $set: { grievanceAccess: null } });
+  await User.updateOne({ _id: admin._id }, { $set: { grievanceAccess: 'handler' } });
+  const item = await feedback(employee, {
+    createdAt: new Date('2026-11-18T04:00:00Z'),
+    statusHistory: [{ status: 'submitted', changedBy: employee._id, changedAt: new Date('2026-11-18T04:00:00Z') }]
+  });
+  const messages = [];
+  const send = async message => { messages.push(message); };
+  try {
+    const friday = await sendWeeklyFeedbackSummary({ now: new Date('2026-11-20T12:30:00Z'), dryRun: false, send });
+    assert.equal(friday.sent, 1);
+    await Grievance.updateOne({ _id: item._id }, {
+      $set: { status: 'resolved', resolvedAt: new Date('2026-11-21T06:00:00Z') },
+      $push: { statusHistory: { status: 'resolved', changedBy: admin._id, changedAt: new Date('2026-11-21T06:00:00Z') } }
+    });
+    const monday = await sendWeeklyFeedbackSummary({ now: new Date('2026-11-23T03:30:00Z'), dryRun: false, send });
+    assert.equal(monday.sent, 1);
+    assert.ok(messages[1].text.includes('Submitted → Resolved'));
+    const again = await sendWeeklyFeedbackSummary({ now: new Date('2026-11-23T04:00:00Z'), dryRun: false, send });
+    assert.equal(again.sent, 0);
+  } finally {
+    await User.updateOne({ _id: admin._id }, { $set: { grievanceAccess: null } });
+    if (previous) process.env.WEEKLY_SUMMARY_ENABLED = previous;
+    else delete process.env.WEEKLY_SUMMARY_ENABLED;
+  }
+});

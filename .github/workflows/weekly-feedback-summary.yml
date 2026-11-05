@@ -3,6 +3,8 @@ name: Weekly feedback summary
 on:
   schedule:
     - cron: '30 12 * * 5'
+    - cron: '0 13 * * 5'
+    - cron: '30 13 * * 5'
   workflow_dispatch:
     inputs:
       send:
