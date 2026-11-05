@@ -399,10 +399,11 @@ test('SMTP and SendGrid notifications use feedback wording and exclude private c
   }
 });
 
-test('weekly summary covers the last complete Monday-to-Sunday week in IST', () => {
-  const week = summaryWeek(new Date('2026-11-02T03:30:00Z'));
-  assert.equal(week.start.toISOString(), '2026-10-25T18:30:00.000Z');
-  assert.equal(week.end.toISOString(), '2026-11-01T18:30:00.000Z');
+test('weekly summary covers the current Monday-to-send-time week in IST', () => {
+  const now = new Date('2026-11-06T12:30:00Z');
+  const week = summaryWeek(now);
+  assert.equal(week.start.toISOString(), '2026-11-01T18:30:00.000Z');
+  assert.equal(week.end.toISOString(), now.toISOString());
 });
 
 test('mail readiness requires a provider and a sender', () => {
@@ -426,13 +427,29 @@ test('mail readiness requires a provider and a sender', () => {
   }
 });
 
-test('weekly summaries are aggregate-only and dry runs send no email', async () => {
-  const now = new Date('2026-11-02T03:30:00Z');
-  await feedback(employee, { createdAt: new Date('2026-10-28T12:00:00Z'), feedbackType: 'appreciation' });
+test('weekly summaries show subjects but never descriptions, escape subjects, and dry runs send no email', async () => {
+  const now = new Date('2026-11-06T12:30:00Z');
+  await feedback(employee, { createdAt: new Date('2026-11-03T04:00:00Z'), feedbackType: 'appreciation' });
+  await feedback(employee, { createdAt: new Date('2026-11-03T05:00:00Z'), subject: '<img src=x onerror=alert(1)>' });
+  await feedback(employee, {
+    createdAt: new Date('2026-11-02T06:00:00Z'),
+    status: 'resolved',
+    resolvedAt: new Date('2026-11-04T06:00:00Z'),
+    statusHistory: [
+      { status: 'submitted', changedBy: employee._id, changedAt: new Date('2026-11-02T06:00:00Z') },
+      { status: 'resolved', changedBy: admin._id, changedAt: new Date('2026-11-04T06:00:00Z') }
+    ]
+  });
   const summary = await buildWeeklyFeedbackSummary(now);
-  assert.ok(summary.received >= 1);
-  assert.ok(!summary.text.includes('Private feedback subject'));
+  assert.ok(summary.received >= 3);
+  assert.ok(summary.text.includes('Submitted → Resolved'));
+  assert.ok(summary.html.includes('Submitted → Resolved'));
+  assert.ok(summary.text.includes('Private feedback subject'));
+  assert.ok(summary.html.includes('Private feedback subject'));
+  assert.ok(!summary.text.includes('PRIVATE_DESCRIPTION_DO_NOT_EMAIL'));
   assert.ok(!summary.html.includes('PRIVATE_DESCRIPTION_DO_NOT_EMAIL'));
+  assert.ok(!summary.html.includes('<img src=x'));
+  assert.ok(summary.html.includes('&lt;img src=x'));
   let calls = 0;
   const result = await sendWeeklyFeedbackSummary({ now, send: async () => { calls++; } });
   assert.equal(result.dryRun, true);

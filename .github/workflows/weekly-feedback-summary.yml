@@ -2,7 +2,7 @@ name: Weekly feedback summary
 
 on:
   schedule:
-    - cron: '30 3 * * 1'
+    - cron: '30 12 * * 5'
   workflow_dispatch:
     inputs:
       send:
