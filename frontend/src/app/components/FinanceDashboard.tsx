@@ -32,7 +32,7 @@ export default function FinanceDashboard() {
   const [currentView, setCurrentView] = useState<'claims' | 'leave-dashboard' | 'travel-guidelines'>('claims');
   const { user } = useSelector((state: RootState) => state.auth);
   const { data: claimsData, isLoading: claimsLoading, error: claimsError } = useGetClaimsQuery({ limit: 1000 });
-  const claims = claimsData?.claims || [];
+  const claims = useMemo(() => claimsData?.claims || [], [claimsData]);
   const { data: stats, isLoading: statsLoading } = useGetClaimStatsQuery({});
   const router = useRouter();
   const [financeApprove] = useFinanceApproveMutation();
@@ -155,7 +155,7 @@ export default function FinanceDashboard() {
       setSelectedClaim(null);
     } catch (error: any) {
       console.error('Payment error:', error);
-      toast.error(error?.data?.error || 'Failed to mark claim as paid');
+      throw error;
     }
   };
 
@@ -221,21 +221,21 @@ export default function FinanceDashboard() {
               </button>
               <button
                 onClick={() => handleDownloadClaims('finance_approved')}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download Finance Approved
               </button>
               <button
                 onClick={() => handleDownloadClaims()}
-                className="flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700"
+                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download All
               </button>
               <button
                 onClick={handleSubmitClaim}
-                className="flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700"
+                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Submit Claim
@@ -268,10 +268,10 @@ export default function FinanceDashboard() {
               <button
                 key={tab.key}
                 onClick={() => setCurrentView(tab.key)}
-                className={`flex items-center space-x-2 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${currentView === tab.key
+                className={`ui-tab ${`flex items-center space-x-2 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${currentView === tab.key
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  }`}`}
               >
                 <tab.icon className="h-4 w-4" />
                 <span>{tab.label}</span>
@@ -284,62 +284,40 @@ export default function FinanceDashboard() {
           <>
             {/* Stats */}
             {!statsLoading && stats && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <FileText className="h-8 w-8 text-blue-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Total Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.totalClaims || 0}</p>
-                      </div>
-                    </div>
+              <div className="ui-kpi-grid mb-8">
+                <div className="ui-kpi-card">
+                  <span className="ui-kpi-icon bg-blue-100 text-blue-600"><FileText size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Total Claims</p>
+                    <p className="ui-kpi-value">{stats.totalClaims || 0}</p>
                   </div>
                 </div>
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <DollarSign className="h-8 w-8 text-green-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          ₹{stats.totalAmount?.toLocaleString() || 0}
-                        </p>
-                      </div>
-                    </div>
+                <div className="ui-kpi-card">
+                  <span className="ui-kpi-icon bg-purple-100 text-purple-600"><DollarSign size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Total Amount</p>
+                    <p className="ui-kpi-value">₹{stats.totalAmount?.toLocaleString() || 0}</p>
                   </div>
                 </div>
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <CheckCircle className="h-8 w-8 text-green-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Paid Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {getStatusCount('paid')}
-                        </p>
-                      </div>
-                    </div>
+                <div className="ui-kpi-card">
+                  <span className="ui-kpi-icon bg-green-100 text-green-600"><CheckCircle size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Paid Claims</p>
+                    <p className="ui-kpi-value">{getStatusCount('paid')}</p>
                   </div>
                 </div>
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <Clock className="h-8 w-8 text-yellow-600" />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Pending Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {getStatusCount('submitted')}
-                        </p>
-                      </div>
-                    </div>
+                <div className="ui-kpi-card">
+                  <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Clock size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">Pending Claims</p>
+                    <p className="ui-kpi-value">{getStatusCount('submitted')}</p>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Filters + Claims List */}
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-md">
               <div className="px-4 py-5 sm:px-6 space-y-4">
                 <div>
                   <h2 className="text-lg font-medium text-gray-900">Claims Requiring Financial Review</h2>
@@ -386,14 +364,14 @@ export default function FinanceDashboard() {
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">Leave Dashboard</h2>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="ui-panel bg-white rounded-lg shadow p-6">
               <div className="text-center py-8">
                 <Calendar className="h-12 w-12 text-blue-500 mx-auto mb-4" />
                 <p className="text-gray-600 mb-2">Leave Dashboard</p>
                 <p className="text-sm text-gray-400">View comprehensive leave analytics and management</p>
                 <button
                   onClick={() => router.push('/leave-dashboard')}
-                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                  className="ui-button ui-button-primary mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Open Leave Dashboard
                 </button>

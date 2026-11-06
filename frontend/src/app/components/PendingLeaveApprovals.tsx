@@ -76,7 +76,7 @@ export default function PendingLeaveApprovals() {
         <p className="text-gray-600 mb-4">There was an error loading the pending leave requests.</p>
         <button
           onClick={() => refetch()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
         >
           Try Again
         </button>
@@ -114,7 +114,7 @@ export default function PendingLeaveApprovals() {
         </button>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-md">
         <ul className="divide-y divide-gray-200">
           {leaves.map((leave: any) => (
             <li key={leave._id} className="px-6 py-4 hover:bg-gray-50">
@@ -165,7 +165,7 @@ export default function PendingLeaveApprovals() {
                 <div className="flex-shrink-0 flex space-x-2">
                   <button
                     onClick={() => handleApprove(leave)}
-                    className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="ui-button ui-button-primary bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
                   >
                     Review
                   </button>

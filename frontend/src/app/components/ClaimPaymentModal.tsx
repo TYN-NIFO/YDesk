@@ -1,5 +1,7 @@
 'use client';
 
+import { Dialog } from "./ui/WorkspaceUI";
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,20 +44,12 @@ export default function ClaimPaymentModal({ claim, onClose, onMarkAsPaid }: Clai
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Mark Claim as Paid</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
+    <Dialog title="Record claim payment" description="Confirm the payment details for this approved expense." onClose={onClose} busy={isProcessing}>
+
+
 
         {/* Claim Details */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+        <div className="ui-detail-summary mb-6 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-medium text-gray-900 mb-2">Claim Details</h4>
           <div className="space-y-2 text-sm">
             <div>
@@ -81,9 +75,9 @@ export default function ClaimPaymentModal({ claim, onClose, onMarkAsPaid }: Clai
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Payment Channel
             </label>
-            <select
+            <select aria-label="Payment Channel"
               {...register('channel')}
-              className="input"
+              className="ui-control input"
             >
               <option value="">Select payment channel</option>
               {policy?.payoutChannels?.map((channel: string) => (
@@ -101,10 +95,10 @@ export default function ClaimPaymentModal({ claim, onClose, onMarkAsPaid }: Clai
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Notes (Optional)
             </label>
-            <textarea
+            <textarea aria-label="Notes (Optional)"
               {...register('notes')}
               rows={3}
-              className="input"
+              className="ui-control input"
               placeholder="Add any notes about the payment..."
             />
             {errors.notes && (
@@ -130,7 +124,7 @@ export default function ClaimPaymentModal({ claim, onClose, onMarkAsPaid }: Clai
             </button>
           </div>
         </form>
-      </div>
-    </div>
+
+    </Dialog>
   );
 }

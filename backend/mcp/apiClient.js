@@ -1,6 +1,5 @@
 import { MCP_INTERNAL_HEADER, MCP_INTERNAL_SECRET } from './internal.js';
 
-// Calls the REST API on this same server over loopback, as the user who made
 // the MCP request. Every call still runs that route's auth, RBAC and policy
 // validation, so tools can never do more than the user could in the web app.
 export class LoopbackApiClient {

@@ -8,6 +8,7 @@ import { RootState } from '@/lib/store';
 import { useGetUsersQuery, useCreateUserMutation, useUpdateUserMutation, useDeactivateUserMutation, useResetUserPasswordMutation, useDeleteUserMutation } from '@/lib/api';
 import { UserPlus, Trash2, Eye, Edit, Key, Menu, X, Users, Settings, FileText, CreditCard, Plus, ArrowLeft, UserX } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Dialog, PageHeading } from '@/app/components/ui/WorkspaceUI';
 
 interface User {
   _id: string;
@@ -369,11 +370,11 @@ export default function UserManagement() {
   const getDrawerTitle = () => {
     switch (drawerMode) {
       case 'create':
-        return 'Add New User';
+        return 'Add a team member';
       case 'edit':
-        return 'Edit User';
+        return 'Edit team member';
       case 'view':
-        return 'View User Details';
+        return 'Team member details';
       case 'reset-password':
         return `Reset Password for ${selectedUser?.name}`;
       default:
@@ -388,13 +389,13 @@ export default function UserManagement() {
           <form onSubmit={handleCreateUser} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">Name *</label>
-              <input
+              <input aria-label="Name"
                 type="text"
                 required
                 value={createForm.name}
                 onChange={(e) => handleInputChange('create', 'name', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.name ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.name ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Enter full name"
               />
               {formErrors.name && (
@@ -403,13 +404,13 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Email *</label>
-              <input
+              <input aria-label="Email"
                 type="email"
                 required
                 value={createForm.email}
                 onChange={(e) => handleInputChange('create', 'email', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.email ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.email ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Enter email address"
               />
               {formErrors.email && (
@@ -418,13 +419,13 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Password *</label>
-              <input
+              <input aria-label="Password"
                 type="password"
                 required
                 value={createForm.password}
                 onChange={(e) => handleInputChange('create', 'password', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.password ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.password ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Minimum 6 characters"
               />
               {formErrors.password && (
@@ -433,13 +434,13 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Confirm Password *</label>
-              <input
+              <input aria-label="Confirm Password"
                 type="password"
                 required
                 value={createForm.confirmPassword}
                 onChange={(e) => handleInputChange('create', 'confirmPassword', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Confirm password"
               />
               {formErrors.confirmPassword && (
@@ -448,10 +449,10 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Role *</label>
-              <select
+              <select aria-label="Role"
                 value={createForm.role}
                 onChange={(e) => handleInputChange('create', 'role', e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="ui-control mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="employee">Employee</option>
                 <option value="supervisor">Supervisor</option>
@@ -462,13 +463,13 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Department *</label>
-              <input
+              <input aria-label="Department"
                 type="text"
                 required
                 value={createForm.department}
                 onChange={(e) => handleInputChange('create', 'department', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.department ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.department ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Enter department"
               />
               {formErrors.department && (
@@ -478,11 +479,11 @@ export default function UserManagement() {
             {createForm.role === 'supervisor' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Supervisor Level *</label>
-                <select
+                <select aria-label="Supervisor Level"
                   value={createForm.supervisorLevel || 1}
                   onChange={(e) => handleInputChange('create', 'supervisorLevel', parseInt(e.target.value))}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.supervisorLevel ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                  className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.supervisorLevel ? 'border-red-300' : 'border-gray-300'
+                    }`}`}
                 >
                   <option value={1}>Level 1</option>
                   <option value={2}>Level 2</option>
@@ -496,14 +497,14 @@ export default function UserManagement() {
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                className="ui-button ui-button-secondary bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Creating...' : 'Create User'}
               </button>
@@ -516,13 +517,13 @@ export default function UserManagement() {
           <form onSubmit={handleEditUser} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">Name *</label>
-              <input
+              <input aria-label="Name"
                 type="text"
                 required
                 value={editForm.name}
                 onChange={(e) => handleInputChange('edit', 'name', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.name ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.name ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Enter full name"
               />
               {formErrors.name && (
@@ -531,13 +532,13 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Email *</label>
-              <input
+              <input aria-label="Email"
                 type="email"
                 required
                 value={editForm.email}
                 onChange={(e) => handleInputChange('edit', 'email', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.email ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.email ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Enter email address"
               />
               {formErrors.email && (
@@ -546,10 +547,10 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Role *</label>
-              <select
+              <select aria-label="Role"
                 value={editForm.role}
                 onChange={(e) => handleInputChange('edit', 'role', e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="ui-control mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="employee">Employee</option>
                 <option value="supervisor">Supervisor</option>
@@ -560,13 +561,13 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Department *</label>
-              <input
+              <input aria-label="Department"
                 type="text"
                 required
                 value={editForm.department}
                 onChange={(e) => handleInputChange('edit', 'department', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.department ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.department ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Enter department"
               />
               {formErrors.department && (
@@ -576,11 +577,11 @@ export default function UserManagement() {
             {editForm.role === 'supervisor' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Supervisor Level *</label>
-                <select
+                <select aria-label="Supervisor Level"
                   value={editForm.supervisorLevel || 1}
                   onChange={(e) => handleInputChange('edit', 'supervisorLevel', parseInt(e.target.value))}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.supervisorLevel ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                  className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.supervisorLevel ? 'border-red-300' : 'border-gray-300'
+                    }`}`}
                 >
                   <option value={1}>Level 1</option>
                   <option value={2}>Level 2</option>
@@ -594,14 +595,14 @@ export default function UserManagement() {
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                className="ui-button ui-button-secondary bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Updating...' : 'Update User'}
               </button>
@@ -650,14 +651,14 @@ export default function UserManagement() {
               <button
                 type="button"
                 onClick={() => selectedUser && openDrawer('edit', selectedUser)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
               >
                 Edit User
               </button>
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                className="ui-button ui-button-secondary bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
               >
                 Close
               </button>
@@ -670,13 +671,13 @@ export default function UserManagement() {
           <form onSubmit={handleResetPassword} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">New Password *</label>
-              <input
+              <input aria-label="New Password"
                 type="password"
                 required
                 value={resetPasswordForm.password}
                 onChange={(e) => handleInputChange('reset', 'password', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.password ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.password ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Minimum 6 characters"
               />
               {formErrors.password && (
@@ -685,13 +686,13 @@ export default function UserManagement() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Confirm New Password *</label>
-              <input
+              <input aria-label="Confirm New Password"
                 type="password"
                 required
                 value={resetPasswordForm.confirmPassword}
                 onChange={(e) => handleInputChange('reset', 'confirmPassword', e.target.value)}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`ui-control ${`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                  }`}`}
                 placeholder="Confirm password"
               />
               {formErrors.confirmPassword && (
@@ -702,7 +703,7 @@ export default function UserManagement() {
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                className="ui-button ui-button-secondary bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
               >
                 Cancel
               </button>
@@ -760,7 +761,7 @@ export default function UserManagement() {
                 console.log('Add User button clicked');
                 openDrawer('create');
               }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center"
+              className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add User
@@ -770,7 +771,7 @@ export default function UserManagement() {
 
         {/* Users Table */}
         <div className="px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-4 py-5 sm:px-6">
               <h2 className="text-lg font-medium text-gray-900">All Users</h2>
               <p className="mt-1 text-sm text-gray-500">
@@ -779,28 +780,28 @@ export default function UserManagement() {
             </div>
             <div className="border-t border-gray-200">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="ui-table min-w-full divide-y divide-gray-200">
+                  <thead className="ui-table-head bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Name
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Email
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Role
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Department
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Created
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -815,13 +816,13 @@ export default function UserManagement() {
                           e.stopPropagation();
                         }}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {user.name}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {user.email}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-red-100 text-red-800' :
                               user.role === 'finance_manager' ? 'bg-purple-100 text-purple-800' :
                                 user.role === 'supervisor' ? 'bg-green-100 text-green-800' :
@@ -831,19 +832,19 @@ export default function UserManagement() {
                             {user.supervisorLevel && ` (L${user.supervisorLevel})`}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {user.department || 'N/A'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                             }`}>
                             {user.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(user.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={(e) => {
@@ -900,7 +901,7 @@ export default function UserManagement() {
                                   console.log('Delete button clicked for user:', user._id);
                                   handleDeleteUser(user._id);
                                 }}
-                                className="text-red-600 hover:text-red-900"
+                                className="ui-icon-button text-red-600 hover:text-red-900"
                                 title="Delete User Permanently"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -918,38 +919,7 @@ export default function UserManagement() {
       </div>
 
       {/* Right Side Drawer */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={closeDrawer}></div>
-            <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex">
-              <div className="w-screen max-w-md">
-                <div className="h-full flex flex-col bg-white shadow-xl">
-                  {/* Header */}
-                  <div className="px-4 py-6 bg-gray-50 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-medium text-gray-900">{getDrawerTitle()}</h2>
-                      <button
-                        onClick={closeDrawer}
-                        className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <X className="h-6 w-6" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 overflow-y-auto">
-                    <div className="px-4 py-6 sm:px-6">
-                      {renderDrawerContent()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {drawerOpen && <Dialog title={getDrawerTitle()} description="Keep team access and account details up to date." onClose={closeDrawer} busy={isSubmitting}>{renderDrawerContent()}</Dialog>}
     </div>
   );
 }

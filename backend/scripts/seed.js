@@ -1,3 +1,4 @@
+import { seedPassword } from './seed-password.js';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Policy from '../models/Policy.js';
@@ -26,7 +27,7 @@ const seedDatabase = async () => {
       const adminUser = new TempUser({
         name: 'System Administrator',
         email: 'admin@company.com',
-        password: 'admin123', // Will be hashed by virtual
+        password: seedPassword(), // Will be hashed by virtual
         role: 'admin',
         department: 'IT'
       });

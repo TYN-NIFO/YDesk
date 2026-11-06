@@ -10,6 +10,9 @@ import { ArrowLeft, Edit, DollarSign, Trash2 } from 'lucide-react';
 import PaymentModal from '@/app/components/PaymentModal';
 import toast from 'react-hot-toast';
 import authService from '@/lib/authService';
+import { PageHeading, FormSection } from '@/app/components/ui/WorkspaceUI';
+import { Receipt, FileText, Download, Eye, Wallet, CheckCircle } from 'lucide-react';
+import { formatCurrency } from '@/lib/currencyConverter';
 
 export default function ClaimViewPage() {
   const params = useParams();
@@ -57,29 +60,9 @@ export default function ClaimViewPage() {
   };
 
   const canEditClaim = (claim: any): boolean => {
-    if (!user || !claim) return false;
-
-    // Admin can edit all claims
-    if (user.role === 'admin') return true;
-
-    // Employees can only edit their own claims if status allows it
-    if (user.role === 'employee') {
-      return claim.employeeId._id === user._id &&
-        ['submitted', 'rejected'].includes(claim.status);
-    }
-
-    // Supervisors can only edit their own claims (not their assigned employees' claims)
-    if (user.role === 'supervisor') {
-      return claim.employeeId._id === user._id &&
-        ['submitted', 'rejected'].includes(claim.status);
-    }
-
-    // Finance managers can see Edit for claims they created, except when already paid
-    if (user.role === 'finance_manager') {
-      return claim.employeeId._id === user._id && claim.status !== 'paid';
-    }
-
-    return false;
+    if (!user || !claim || ['paid', 'done'].includes(claim.status)) return false;
+    return ['admin', 'finance_manager', 'executive'].includes(user.role) ||
+      (claim.employeeId._id === user._id && ['submitted', 'rejected'].includes(claim.status));
   };
 
   const canMarkAsPaid = (claim: any): boolean => {
@@ -88,37 +71,17 @@ export default function ClaimViewPage() {
   };
 
   const canDeleteClaim = (claim: any): boolean => {
-    if (!user || !claim) return false;
-
-    // Admin can delete any claim
-    if (user.role === 'admin') return true;
-
-    // Employee can delete own claims if not approved
-    if (user.role === 'employee') {
-      return claim.employeeId._id === user._id &&
-        ['submitted', 'rejected'].includes(claim.status);
-    }
-
-    // Supervisor can delete manageable claims before finance approval
-    if (user.role === 'supervisor') {
-      return ['submitted', 'approved', 'rejected'].includes(claim.status);
-    }
-
-    // Finance manager can delete any claim before payment
-    if (user.role === 'finance_manager') {
-      return ['submitted', 'approved', 'finance_approved', 'rejected'].includes(claim.status);
-    }
-
-    return false;
+    if (!user || !claim || !['submitted', 'rejected'].includes(claim.status)) return false;
+    return ['admin', 'finance_manager', 'executive'].includes(user.role) || claim.employeeId._id === user._id;
   };
 
-  const handleMarkAsPaid = async (id: string, channel?: string) => {
+  const handleMarkAsPaid = async (id: string, channel?: string, reference?: string, file?: File | null) => {
     try {
-      await markPaid({ id, channel: channel || 'manual' }).unwrap();
+      await markPaid({ id, channel: channel || 'Bank Transfer', reference, file }).unwrap();
       toast.success('Claim marked as paid successfully');
       setIsPaymentOpen(false);
     } catch (e: any) {
-      toast.error(e?.data?.error || e?.data?.message || 'Failed to mark claim as paid');
+      throw e;
     }
   };
 
@@ -170,7 +133,7 @@ export default function ClaimViewPage() {
           <p className="text-red-600">Error loading claim. Please try again.</p>
           <button
             onClick={() => router.back()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="ui-button ui-button-primary mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Go Back
           </button>
@@ -179,253 +142,21 @@ export default function ClaimViewPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center text-gray-600 hover:text-gray-800"
-            >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back
-            </button>
-            <h1 className="text-2xl font-semibold text-gray-900">Claim Details</h1>
-          </div>
-          <div className="flex space-x-3">
-            {canEditClaim(claim) && (
-              <button
-                onClick={() => router.push(`/claims/${claimId}/edit`)}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </button>
-            )}
-            {canMarkAsPaid(claim) && (
-              <button
-                onClick={() => setIsPaymentOpen(true)}
-                disabled={isMarkingPaid}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-              >
-                <DollarSign className="h-4 w-4 mr-2" />
-                {isMarkingPaid ? 'Processing...' : 'Mark as Paid'}
-              </button>
-            )}
-            {canDeleteClaim(claim) && (
-              <button
-                onClick={handleDeleteClaim}
-                disabled={isDeleting}
-                className="flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {isDeleting ? 'Deleting...' : 'Delete Claim'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Claim Details */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Claim Information</h2>
-          </div>
-          <div className="px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Category</h3>
-                <p className="mt-1 text-sm text-gray-900">{claim.category}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Business Unit</h3>
-                <p className="mt-1 text-sm text-gray-900">{claim.businessUnit}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                <p className="mt-1 text-sm text-gray-900">{claim.status}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Employee</h3>
-                <p className="mt-1 text-sm text-gray-900">{claim.employeeId?.name}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Created</h3>
-                <p className="mt-1 text-sm text-gray-900">
-                  {claim.createdAt ? format(new Date(claim.createdAt), 'MMM dd, yyyy HH:mm') : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Last Updated</h3>
-                <p className="mt-1 text-sm text-gray-900">
-                  {claim.updatedAt ? format(new Date(claim.updatedAt), 'MMM dd, yyyy HH:mm') : 'N/A'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Line Items */}
-        <div className="mt-8 bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Line Items</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Sub Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    GST
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {claim.lineItems?.map((item: any, index: number) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.date ? format(new Date(item.date), 'MMM dd, yyyy') : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.subCategory}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.description}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.currency} {item.amount?.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.gstTotal?.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₹{item.amountInINR?.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Attachments */}
-        <div className="mt-8 bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Attachments</h2>
-          </div>
-          <div className="px-6 py-4">
-            {claim.lineItems?.some((item: any) => item.attachments && item.attachments.length > 0) ? (
-              <div className="space-y-4">
-                {claim.lineItems?.map((item: any, lineIndex: number) => (
-                  item.attachments && item.attachments.length > 0 && (
-                    <div key={lineIndex} className="border rounded-lg p-4">
-                      <h3 className="text-sm font-medium text-gray-700 mb-3">
-                        Line Item {lineIndex + 1}: {item.subCategory}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {item.attachments.map((attachment: any, fileIndex: number) => (
-                          <div key={fileIndex} className="border rounded-lg p-3 bg-gray-50">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-medium text-gray-600">
-                                {attachment.label || 'Document'}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {(attachment.size / 1024 / 1024).toFixed(2)} MB
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <div className="flex-shrink-0">
-                                <svg className="h-8 w-8 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {attachment.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {attachment.mime}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="mt-3 flex space-x-2">
-                              <button
-                                onClick={() => handleFileAccess(attachment.url, attachment.name)}
-                                className="flex-1 bg-blue-600 text-white text-xs px-3 py-1 rounded hover:bg-blue-700 transition-colors"
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={() => handleFileAccess(attachment.url, attachment.name, true)}
-                                className="flex-1 bg-gray-600 text-white text-xs px-3 py-1 rounded hover:bg-gray-700 transition-colors"
-                              >
-                                Download
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No attachments</h3>
-                <p className="mt-1 text-sm text-gray-500">No files have been uploaded for this claim.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Totals */}
-        <div className="mt-8 bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Summary</h2>
-          </div>
-          <div className="px-6 py-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-sm text-gray-600">Grand Total</p>
-                <p className="text-2xl font-bold text-gray-900">₹{claim.grandTotal?.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Advances</p>
-                <p className="text-xl font-semibold text-green-600">₹{claim.advances?.reduce((sum: number, adv: any) => sum + (adv.amount || 0), 0)?.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Net Payable</p>
-                <p className="text-2xl font-bold text-blue-600">₹{claim.netPayable?.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+  const statusLabels: Record<string, string> = { submitted: 'Awaiting review', finance_approved: 'Approved by finance', approved: 'Approved', paid: 'Paid', done: 'Completed', rejected: 'Needs attention' };
+  const displayDate = (date?: string) => date ? format(new Date(date), 'dd MMM yyyy') : '—';
+  const receiptButtons = (files: any[]) => files?.length ? <div className="space-y-2">{files.map(file => <div key={file.fileId || file.name} className="ui-receipt"><span className="ui-receipt-name"><FileText size={15} /><span>{file.name}</span></span><button type="button" className="ui-icon-button" aria-label={`View ${file.name}`} onClick={() => handleFileAccess(file.url, file.name)}><Eye size={15} /></button><button type="button" className="ui-icon-button" aria-label={`Download ${file.name}`} onClick={() => handleFileAccess(file.url, file.name, true)}><Download size={15} /></button></div>)}</div> : <p className="ui-field-hint">No receipts attached.</p>;
+  return <div className="ui-page">
+    <PageHeading title={claim.claimId || 'Expense claim'} description={`Submitted by ${claim.employeeId?.name || 'employee'} on ${displayDate(claim.createdAt)}`} icon={Receipt} onBack={() => router.back()} actions={<>{canEditClaim(claim) && <button type="button" onClick={() => router.push(`/claims/${claimId}/edit`)} className="ui-button ui-button-secondary"><Edit size={15} />Edit claim</button>}{canMarkAsPaid(claim) && <button type="button" onClick={() => setIsPaymentOpen(true)} disabled={isMarkingPaid} className="ui-button ui-button-primary"><DollarSign size={15} />Record payment</button>}{canDeleteClaim(claim) && <button type="button" onClick={handleDeleteClaim} disabled={isDeleting} className="ui-button ui-button-danger"><Trash2 size={15} />{isDeleting ? 'Deleting…' : 'Delete claim'}</button>}</>} />
+    <div className="ui-form-layout">
+      <div className="ui-form-main">
+        <FormSection title="Claim details" icon={FileText}><dl className="grid sm:grid-cols-2 gap-5">{[['Category', claim.category], ['Business unit', claim.businessUnit], ['Employee', claim.employeeId?.name], ['Email', claim.employeeId?.email]].map(([label, value]) => <div key={label}><dt className="ui-field-hint">{label}</dt><dd className="text-sm font-medium text-blue-900 mt-1 break-words">{value || '—'}</dd></div>)}</dl></FormSection>
+        <FormSection title="Expense items" description={`${claim.lineItems?.length || 0} items in this claim`} icon={Receipt}><div className="space-y-5">{claim.lineItems?.map((item: any, index: number) => <article className="ui-expense-item" key={item._id || index}><div className="ui-expense-item-heading"><h3><span className="ui-item-number">{index + 1}</span>{item.subCategory}</h3><span className="text-xs text-gray-500">{displayDate(item.date)}</span></div><p className="text-sm text-gray-600 leading-relaxed mb-5">{item.description}</p><div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5"><div><p className="ui-field-hint">Amount</p><p className="text-sm mt-1">{formatCurrency(item.amount || 0, item.currency || 'INR')}</p></div><div><p className="ui-field-hint">GST / tax</p><p className="text-sm mt-1">{formatCurrency(item.gstTotal || 0, item.currency || 'INR')}</p></div><div><p className="ui-field-hint">Total in INR</p><p className="text-sm font-semibold text-blue-900 mt-1">{formatCurrency(item.amountInINR || 0, 'INR')}</p></div></div>{receiptButtons(item.attachments)}</article>)}</div></FormSection>
+        {claim.advances?.length > 0 && <FormSection title="Advances" icon={Wallet}><div className="overflow-x-auto"><table className="ui-table"><thead className="ui-table-head"><tr>{['Date', 'Reference', 'Amount'].map(label => <th className="ui-table-th text-left" key={label}>{label}</th>)}</tr></thead><tbody>{claim.advances.map((advance: any, index: number) => <tr key={advance._id || index}><td className="ui-table-td">{displayDate(advance.date)}</td><td className="ui-table-td">{advance.refNo || '—'}</td><td className="ui-table-td">{formatCurrency(advance.amount || 0, 'INR')}</td></tr>)}</tbody></table></div></FormSection>}
+        {claim.attachments?.length > 0 && <FormSection title="Additional documents" icon={FileText}>{receiptButtons(claim.attachments)}</FormSection>}
+        <FormSection title="Review and settlement" icon={CheckCircle}><div className="space-y-5"><div className="ui-detail-summary"><h3 className="text-sm font-semibold text-blue-900">Finance review</h3><p className="text-xs text-gray-500 mt-2">{claim.financeApproval?.approvedBy?.name || 'Not reviewed yet'}{claim.financeApproval?.approvedAt ? ` · ${displayDate(claim.financeApproval.approvedAt)}` : ''}</p>{claim.financeApproval?.notes && <p className="text-sm text-gray-600 mt-3">{claim.financeApproval.notes}</p>}{claim.financeApproval?.reason && <p className="ui-field-error mt-3">{claim.financeApproval.reason}</p>}</div>{claim.payment?.paidAt && <div className="ui-detail-summary"><h3 className="text-sm font-semibold text-blue-900">Payment recorded</h3><p className="text-xs text-gray-500 mt-2">{claim.payment.channel} · {displayDate(claim.payment.paidAt)}</p>{claim.payment.reference && <p className="text-sm mt-3">Reference: {claim.payment.reference}</p>}</div>}</div></FormSection>
       </div>
-      {isPaymentOpen && claim && (
-        <PaymentModal
-          claim={claim}
-          onClose={() => setIsPaymentOpen(false)}
-          onPay={handleMarkAsPaid}
-        />
-      )}
+      <aside className="ui-summary"><h2 className="ui-summary-heading">Claim summary</h2><div className="ui-summary-content"><span className={`status-badge status-${claim.status.replaceAll('_', '-')}`}>{statusLabels[claim.status] || claim.status}</span><div className="ui-summary-row mt-4"><span>Expense total</span><strong>{formatCurrency(claim.grandTotal || 0, 'INR')}</strong></div><div className="ui-summary-row"><span>Advances</span><strong>{formatCurrency(claim.advances?.reduce((sum: number, advance: any) => sum + (advance.amount || 0), 0) || 0, 'INR')}</strong></div></div><div className="ui-summary-total"><p>Net payable</p><strong>{formatCurrency(claim.netPayable ?? claim.grandTotal ?? 0, 'INR')}</strong><small>{claim.status === 'paid' ? 'This claim has been settled.' : 'Follow the review status here as your claim progresses.'}</small></div></aside>
     </div>
-  );
+    {isPaymentOpen && <PaymentModal claim={claim} onClose={() => setIsPaymentOpen(false)} onPay={handleMarkAsPaid} />}
+  </div>;
 }

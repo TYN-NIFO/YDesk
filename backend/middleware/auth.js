@@ -26,7 +26,7 @@ const auth = async (req, res, next) => {
     // Find user
     const user = await User.findById(decoded.userId).select('-passwordHash');
     
-    if (!user || !user.isActive) {
+    if (!user || !user.isActive || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
       return res.status(401).json({ 
         error: 'Authentication failed',
         details: 'User not found or inactive' 

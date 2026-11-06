@@ -1,3 +1,4 @@
+import { seedPassword } from './seed-password.js';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import dotenv from 'dotenv';
@@ -25,7 +26,7 @@ const createAdmin = async () => {
     const adminUser = new User({
       name: 'System Administrator',
       email: 'admin@company.com',
-      password: 'admin123',
+      password: seedPassword(),
       role: 'admin',
       department: 'IT',
       createdBy: null

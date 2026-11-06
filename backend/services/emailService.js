@@ -1,12 +1,12 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: './config.env' });
+if (process.env.NODE_ENV !== 'test') dotenv.config({ path: './config.env' });
 
 class EmailService {
   constructor() {
     this.transporter = null;
-    this.initializeTransporter();
+    if (process.env.NODE_ENV !== 'test' && process.env.SMTP_HOST) this.initializeTransporter();
   }
 
   initializeTransporter() {
@@ -38,7 +38,7 @@ class EmailService {
           pass: process.env.SMTP_PASS,
         },
         tls: {
-          rejectUnauthorized: false
+          rejectUnauthorized: true
         },
         connectionTimeout: 10000, // 10 seconds
         greetingTimeout: 10000,
@@ -434,6 +434,24 @@ SECURITY ALERT:
 This is an automated message from Claims Management System.
 © ${new Date().getFullYear()} The Yellow Network. All rights reserved.
     `;
+  }
+
+  // Send a prepared notification email (used by grievance notifications)
+  async sendEmail({ to, subject, html, text }) {
+    if (!this.transporter) {
+      throw new Error('SMTP transporter not configured');
+    }
+    const info = await this.transporter.sendMail({
+      from: {
+        name: 'YDesk',
+        address: process.env.SMTP_FROM
+      },
+      to,
+      subject,
+      html,
+      text
+    });
+    return { success: true, provider: 'SMTP', messageId: info.messageId };
   }
 }
 

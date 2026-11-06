@@ -144,7 +144,7 @@ export default function ClaimList({
   };
 
   const canEditClaim = (claim: Claim): boolean => {
-    if (!user) return false;
+    if (!user || ["paid", "done"].includes(claim.status)) return false;
 
     // Admin can edit all claims
     if (user.role === "admin") return true;
@@ -156,7 +156,7 @@ export default function ClaimList({
     if (user.role === 'executive') return true;
 
     // Employees can edit their own claims only before finance approval
-    if (user.role === "employee") {
+    if (user.role === "employee" || user.role === "supervisor") {
       const isBeforeFinanceApproval = !["finance_approved", "executive_approved", "paid"].includes(claim.status);
       return claim.employeeId._id === user._id && isBeforeFinanceApproval;
     }
@@ -271,7 +271,7 @@ export default function ClaimList({
   };
 
   const canDeleteClaim = (claim: Claim): boolean => {
-    if (!user) return false;
+    if (!user || !["submitted", "rejected"].includes(claim.status)) return false;
 
     // Admin can delete any claim
     if (user.role === "admin") return true;
@@ -291,13 +291,13 @@ export default function ClaimList({
     return false;
   };
 
-  const handleMarkAsPaid = async (claimId: string, channel?: string) => {
+  const handleMarkAsPaid = async (claimId: string, channel?: string, reference?: string, file?: File | null) => {
     try {
-      await markPaid({ id: claimId, channel: channel || "manual" }).unwrap();
+      await markPaid({ id: claimId, channel: channel || "Bank Transfer", reference, file }).unwrap();
       toast.success('Claim marked as paid successfully');
       setPayingClaim(null);
     } catch (e: any) {
-      toast.error(e?.data?.error || e?.data?.message || 'Failed to mark claim as paid');
+      throw e;
     }
   };
 
@@ -356,47 +356,47 @@ export default function ClaimList({
       <div className="flex justify-end">
         <button
           onClick={handleDownloadExcel}
-          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+          className="ui-button ui-button-primary flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
         >
           <Download className="h-4 w-4 mr-2" />
           Download Excel
         </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+        <table className="ui-table w-full divide-y divide-gray-200">
+        <thead className="ui-table-head bg-gray-50">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Claim ID
             </th>
             {showEmployeeName && (
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Employee
               </th>
             )}
 
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Category
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Expense Date
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Amount
             </th>
             {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Description
             </th> */}
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
             </th>
             {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Payment Status
             </th> */}
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Claim Date
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="ui-table-th px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
             </th>
           </tr>
@@ -406,11 +406,11 @@ export default function ClaimList({
             const firstLineItem = getFirstLineItem(claim);
             return (
               <tr key={claim._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {claim._id.slice(-8)}
                 </td>
                 {showEmployeeName && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div>
                       <div className="font-medium text-gray-900">
                         {claim.employeeId?.name || "Unknown Employee"}
@@ -422,21 +422,21 @@ export default function ClaimList({
                   </td>
                 )}
 
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {claim.category}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {firstLineItem
                     ? format(new Date(firstLineItem.date), "MMM dd, yyyy")
                     : "N/A"}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   ₹{claim.grandTotal?.toLocaleString() || "0"}
                 </td>
                 {/* <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                   {firstLineItem?.description || 'N/A'}
                 </td> */}
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="ui-table-td px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     {getStatusIcon(claim.status)}
                     <span
@@ -462,12 +462,12 @@ export default function ClaimList({
                     );
                   })()}
                 </td> */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {claim.createdAt
                     ? format(new Date(claim.createdAt), "MMM dd, yyyy")
                     : "N/A"}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="ui-table-td px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleViewClaim(claim._id)}
@@ -513,7 +513,7 @@ export default function ClaimList({
                       <button
                         onClick={() => handleDeleteClaim(claim._id)}
                         disabled={deletingClaim === claim._id}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                        className="ui-icon-button text-red-600 hover:text-red-900 disabled:opacity-50"
                         title="Delete Claim"
                       >
                         {deletingClaim === claim._id ? (

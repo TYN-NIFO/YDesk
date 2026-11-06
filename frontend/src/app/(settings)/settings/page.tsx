@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useGetProfileQuery, useUpdateProfileMutation, useUploadAvatarMutation } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { User as UserRound, Building2, Camera, Save, Loader2, Lock as LockKeyhole } from 'lucide-react';
+import { PageHeading, FormSection, Field } from '@/app/components/ui/WorkspaceUI';
+import AuthWrapper from '@/app/components/AuthWrapper';
 
 export default function SettingsPage() {
   const { data, isLoading } = useGetProfileQuery(undefined);
@@ -57,116 +60,27 @@ export default function SettingsPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
-            <p className="mt-1 text-sm text-gray-600">Complete your profile details</p>
-          </div>
-
-          <form onSubmit={handleSave} className="p-6 space-y-6">
-            {/* Basic (from registration) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  className="w-full p-3 border border-gray-300 rounded-md bg-gray-50"
-                  value={user?.email || ''}
-                  disabled
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                <input
-                  className="w-full p-3 border border-gray-300 rounded-md bg-gray-50"
-                  value={user?.name || ''}
-                  disabled
-                />
-              </div>
-            </div>
-
-            {/* Onboarding fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">First name</label>
-                <input
-                  className="w-full p-3 border border-gray-300 rounded-md"
-                  value={firstName}
-                  onChange={e => setFirstName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Last name</label>
-                <input
-                  className="w-full p-3 border border-gray-300 rounded-md"
-                  value={lastName}
-                  onChange={e => setLastName(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Company name</label>
-                <input
-                  className="w-full p-3 border border-gray-300 rounded-md"
-                  value={companyName}
-                  onChange={e => setCompanyName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Company URL</label>
-                <input
-                  className="w-full p-3 border border-gray-300 rounded-md"
-                  placeholder="https://example.com"
-                  value={companyUrl}
-                  onChange={e => setCompanyUrl(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Avatar</label>
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-100 border">
-                  {avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center text-gray-400 text-sm">No image</div>
-                  )}
-                </div>
-                <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (f) await handleAvatarChange(f);
-                    }}
-                  />
-                  {isUploading ? 'Uploading...' : 'Upload Avatar'}
-                </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={isLoading || isUpdating}
-                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
-              >
-                {isUpdating ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+  if (isLoading) return <div className="ui-page" role="status">Loading your profile…</div>;
+  return <AuthWrapper><div className="ui-page">
+    <PageHeading title="Account settings" description="Manage the details that make this workspace yours." icon={UserRound} />
+    <div className="ui-form-layout">
+      <form onSubmit={handleSave} className="ui-form-main">
+        <FormSection title="Personal details" description="Your name appears on claims, requests, and approvals." icon={UserRound}><div className="grid sm:grid-cols-2 gap-5">
+          <Field label="First name" htmlFor="profile-first-name"><input id="profile-first-name" className="ui-control" autoComplete="given-name" value={firstName} onChange={event => setFirstName(event.target.value)} /></Field>
+          <Field label="Last name" htmlFor="profile-last-name"><input id="profile-last-name" className="ui-control" autoComplete="family-name" value={lastName} onChange={event => setLastName(event.target.value)} /></Field>
+          <Field label="Work email" htmlFor="profile-email" hint="Managed by your administrator."><input id="profile-email" className="ui-control" value={user?.email || ''} disabled /></Field>
+          <Field label="Account name" htmlFor="profile-account"><input id="profile-account" className="ui-control" value={user?.name || ''} disabled /></Field>
+        </div></FormSection>
+        <FormSection title="Company details" description="Keep your organization information up to date." icon={Building2}><div className="grid sm:grid-cols-2 gap-5">
+          <Field label="Company name" htmlFor="profile-company"><input id="profile-company" className="ui-control" autoComplete="organization" value={companyName} onChange={event => setCompanyName(event.target.value)} placeholder="Your company" /></Field>
+          <Field label="Company website" htmlFor="profile-website" hint="Include https:// at the beginning."><input id="profile-website" type="url" className="ui-control" autoComplete="url" value={companyUrl} onChange={event => setCompanyUrl(event.target.value)} placeholder="https://company.com" /></Field>
+        </div></FormSection>
+        <FormSection title="Profile photo" description="Choose a clear photo so your team can recognize you." icon={Camera}>
+          <label className="ui-upload" htmlFor="profile-photo"><Camera size={22} /><span>{isUploading ? 'Uploading your photo…' : 'Choose a profile photo'}</span><small>JPG or PNG · up to 4MB</small><input id="profile-photo" type="file" className="sr-only" accept="image/jpeg,image/png" disabled={isUploading} onChange={async event => { const file = event.target.files?.[0]; if (file) { if (file.size > 4 * 1024 * 1024) toast.error('Choose a photo smaller than 4MB'); else await handleAvatarChange(file); } event.target.value = ''; }} /></label>
+        </FormSection>
+        <div className="ui-form-actions"><button type="submit" className="ui-button ui-button-primary" disabled={isUpdating || isUploading}>{isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}{isUpdating ? 'Saving changes…' : 'Save profile changes'}</button></div>
+      </form>
+      <aside className="ui-summary"><div className="ui-profile-identity"><div className="ui-profile-avatar">{avatarUrl ? <Image src={avatarUrl} alt="Your profile" width={84} height={84} unoptimized className="w-full h-full object-cover" /> : (firstName[0] || user?.name?.[0] || 'Y') + (lastName[0] || '')}</div><h2 className="text-lg font-semibold text-blue-900">{[firstName, lastName].filter(Boolean).join(' ') || user?.name}</h2><p className="text-xs text-gray-500 mt-2 break-all">{user?.email}</p><span className="inline-block mt-4 rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs capitalize">{user?.role?.replaceAll('_', ' ')}</span></div><div className="ui-summary-help border-t border-gray-200"><h3 className="flex items-center gap-2"><LockKeyhole size={14} />Your account</h3><p>Roles and work email are managed by your administrator. Contact them if these details need to change.</p></div></aside>
     </div>
-  );
+  </div></AuthWrapper>;
 }
-
-

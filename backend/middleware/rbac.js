@@ -38,7 +38,7 @@ const canAccessClaim = async (req, res, next) => {
     }
 
     // Employee can only access their own claims
-    if (user.role === 'employee' && claim.employeeId.toString() === user._id.toString()) {
+    if (claim.employeeId.toString() === user._id.toString()) {
       req.claim = claim;
       return next();
     }

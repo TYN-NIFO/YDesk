@@ -5,6 +5,7 @@ import { useGetLeavesQuery, useDeleteLeaveMutation } from '@/lib/api';
 import toast from 'react-hot-toast';
 import LeaveForm from './LeaveForm';
 import LoadingSpinner from './LoadingSpinner';
+import { Calendar, List, Clock, CheckCircle } from 'lucide-react';
 
 interface LeaveMonthlyViewProps {
   year?: number;
@@ -129,7 +130,7 @@ export default function LeaveMonthlyView({
         <p className="text-gray-600 mb-4">There was an error loading your leave data.</p>
         <button
           onClick={() => refetch()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
         >
           Try Again
         </button>
@@ -167,7 +168,7 @@ export default function LeaveMonthlyView({
         {isCurrentUser && (
           <button
             onClick={() => setShowForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
           >
             Request Leave
           </button>
@@ -176,83 +177,43 @@ export default function LeaveMonthlyView({
 
       {/* KPI Cards */}
       {yearSummary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Leave Days (YTD)</dt>
-                  <dd className="text-lg font-medium text-gray-900">{yearSummary.totalLeaveDays}</dd>
-                </dl>
-              </div>
+        <div className="ui-kpi-grid mb-6">
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-blue-100 text-blue-600"><Calendar size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Total Leave Days (YTD)</p>
+              <p className="ui-kpi-value">{yearSummary.totalLeaveDays}</p>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">WFH Days (YTD)</dt>
-                  <dd className="text-lg font-medium text-gray-900">{yearSummary.wfhDays}</dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-green-100 text-green-600"><List size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">WFH Days (YTD)</p>
+              <p className="ui-kpi-value">{yearSummary.wfhDays}</p>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Permission Hours (YTD)</dt>
-                  <dd className="text-lg font-medium text-gray-900">{yearSummary.permissionHours}</dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-yellow-100 text-yellow-600"><Clock size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Permission Hours (YTD)</p>
+              <p className="ui-kpi-value">{yearSummary.permissionHours}</p>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-red-100 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Pending Requests</dt>
-                  <dd className="text-lg font-medium text-gray-900">{monthStats.pendingRequests}</dd>
-                </dl>
-              </div>
+          <div className="ui-kpi-card">
+            <span className="ui-kpi-icon bg-red-100 text-red-600"><CheckCircle size={18} /></span>
+            <div className="ui-kpi-body">
+              <p className="ui-kpi-label">Pending Requests</p>
+              <p className="ui-kpi-value">{monthStats.pendingRequests}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Detailed Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-md">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">
             Leave Requests for {monthName}
@@ -274,7 +235,7 @@ export default function LeaveMonthlyView({
             {isCurrentUser && (
               <button
                 onClick={() => setShowForm(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
                 Submit Your First Request
               </button>
@@ -344,7 +305,7 @@ export default function LeaveMonthlyView({
                       <button
                         onClick={() => handleDelete(leave._id)}
                         disabled={isDeleting}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
+                        className="ui-button ui-button-secondary text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
                       >
                         Delete
                       </button>

@@ -1,7 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: './config.env' });
+if (process.env.NODE_ENV !== 'test') dotenv.config({ path: './config.env' });
 
 class SendGridEmailService {
   constructor() {
@@ -15,8 +15,7 @@ class SendGridEmailService {
       
       console.log('🔑 SendGrid API Key loaded:', {
         hasKey: !!apiKey,
-        keyLength: apiKey ? apiKey.length : 0,
-        keyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'none'
+        provider: 'SendGrid'
       });
       
       if (!apiKey) {
@@ -406,6 +405,24 @@ SECURITY ALERT:
 This is an automated message from Claims Management System.
 © ${new Date().getFullYear()} The Yellow Network. All rights reserved.
     `;
+  }
+
+  // Send a prepared notification email (used by grievance notifications)
+  async sendEmail({ to, subject, html, text }) {
+    if (!this.initialized) {
+      throw new Error('SendGrid not configured');
+    }
+    const response = await sgMail.send({
+      to,
+      from: {
+        email: process.env.SMTP_FROM || process.env.EMAIL_FROM,
+        name: 'YDesk'
+      },
+      subject,
+      html,
+      text
+    });
+    return { success: true, provider: 'SendGrid', statusCode: response[0].statusCode };
   }
 }
 

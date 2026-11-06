@@ -79,7 +79,7 @@ const AuthWrapper = ({ children, allowedRoles, redirectTo = '/login' }: AuthWrap
           <p className="text-gray-600 mb-4">Please log in to access this page.</p>
           <button
             onClick={() => router.push('/login')}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             Go to Login
           </button>
@@ -100,13 +100,13 @@ const AuthWrapper = ({ children, allowedRoles, redirectTo = '/login' }: AuthWrap
             </p>
             <button
               onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 mr-2"
+              className="ui-button ui-button-danger bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 mr-2"
             >
               Logout
             </button>
             <button
               onClick={() => router.push('/')}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              className="ui-button ui-button-primary bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
             >
               Go Home
             </button>

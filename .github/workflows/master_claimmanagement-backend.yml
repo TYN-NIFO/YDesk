@@ -27,14 +27,14 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: backend
 
       - name: Run tests
-        run: npm run test --if-present
+        run: npm test
         working-directory: backend
 
-      - name: Build and lint
+      - name: Validate JavaScript syntax
         run: npm run build
         working-directory: backend
 

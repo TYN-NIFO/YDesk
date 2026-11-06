@@ -12,6 +12,10 @@ const AttachmentSchema = new mongoose.Schema({
 }, { _id: false });
 
 const LineItemSchema = new mongoose.Schema({
+  type: String,
+  cityClass: { type: String, enum: ['A', 'B', 'C'], default: 'A' },
+  mealType: { type: String, enum: ['breakfast', 'lunch', 'dinner', 'snack'] },
+  nights: { type: Number, min: 1, max: 365, default: 1 },
   date: { type: Date, required: true },
   subCategory: { type: String, required: true },
   description: { type: String, required: true },

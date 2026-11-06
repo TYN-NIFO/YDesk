@@ -1,5 +1,7 @@
 'use client';
 
+import { Dialog } from "./ui/WorkspaceUI";
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,7 +52,7 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
     if (!data.rejectionReason || data.rejectionReason.trim().length < 10) {
       return;
     }
-    
+
     setIsRejecting(true);
     try {
       await onApprove(claim._id, false, data.notes, data.rejectionReason);
@@ -80,24 +82,13 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div className="mt-3">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <Crown className="h-5 w-5 text-yellow-600" />
-              <h3 className="text-lg font-medium text-gray-900">Executive Review</h3>
-            </div>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          </div>
+    <Dialog title="Executive review" description="Review this claim and record your decision." onClose={handleClose} busy={isApproving || isRejecting}>
+
+        <div>
+
 
           {/* Claim Details */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
+          <div className="ui-detail-summary bg-gray-50 p-4 rounded-lg mb-4">
             <div className="space-y-2 text-sm">
               <div>
                 <span className="font-medium">Employee:</span> {claim.employeeId?.name || 'Unknown'}
@@ -134,10 +125,10 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Notes (Optional)
             </label>
-            <textarea
+            <textarea aria-label="Notes (Optional)"
               {...register('notes')}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Add any additional notes..."
             />
           </div>
@@ -148,10 +139,10 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Rejection Reason <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <textarea aria-label="Rejection Reason"
                 {...register('rejectionReason')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="Please provide a detailed reason for rejection (minimum 10 characters)..."
               />
               {errors.rejectionReason && (
@@ -166,11 +157,11 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
               <button
                 onClick={() => handleActionClick('approve')}
                 disabled={isApproving || isRejecting}
-                className={`flex-1 flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                className={`ui-button ${`flex-1 flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
                   isApproving || isRejecting
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
+                    ? 'ui-button-secondary bg-gray-400 cursor-not-allowed'
+                    : 'ui-button-primary bg-green-600 hover:bg-green-700'
+                }`}`}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Approve
@@ -178,11 +169,11 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
               <button
                 onClick={() => handleActionClick('reject')}
                 disabled={isApproving || isRejecting}
-                className={`flex-1 flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                className={`ui-button ${`flex-1 flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
                   isApproving || isRejecting
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-red-600 hover:bg-red-700'
-                }`}
+                    ? 'ui-button-secondary bg-gray-400 cursor-not-allowed'
+                    : 'ui-button-danger bg-red-600 hover:bg-red-700'
+                }`}`}
               >
                 <XCircle className="h-4 w-4 mr-2" />
                 Reject
@@ -196,13 +187,13 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
               <button
                 type="submit"
                 disabled={isApproving || isRejecting || (action === 'reject' && (!watchedRejectionReason || watchedRejectionReason.trim().length < 10))}
-                className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                className={`ui-button ${`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
                   isApproving || isRejecting || (action === 'reject' && (!watchedRejectionReason || watchedRejectionReason.trim().length < 10))
-                    ? 'bg-gray-400 cursor-not-allowed'
+                    ? 'ui-button-secondary bg-gray-400 cursor-not-allowed'
                     : action === 'approve'
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-red-600 hover:bg-red-700'
-                }`}
+                    ? 'ui-button-primary bg-green-600 hover:bg-green-700'
+                    : 'ui-button-danger bg-red-600 hover:bg-red-700'
+                }`}`}
               >
                 {isApproving || isRejecting ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -222,13 +213,13 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
                   </>
                 )}
               </button>
-              
+
               {/* Back button to change action */}
               <button
                 type="button"
                 onClick={() => handleActionClick(null as any)}
                 disabled={isApproving || isRejecting}
-                className="w-full px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="ui-button ui-button-secondary w-full px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
                 Back
               </button>
@@ -247,7 +238,7 @@ export default function ExecutiveApprovalModal({ claim, onClose, onApprove }: Ex
             </div>
           )}
         </div>
-      </div>
-    </div>
+
+    </Dialog>
   );
 }

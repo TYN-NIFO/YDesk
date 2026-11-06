@@ -1,329 +1,82 @@
 import Policy from "../models/Policy.js";
 import { validCategories, validBusinessUnits } from "../lib/categoryMaster.js";
+import { exchangeRates } from "./exchangeRates.js";
 
-/**
- * Validate claim against current policy
- */
-export const validateAgainstPolicy = async (claimData, policy) => {
-  const violations = [];
+const money = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+const round = value => Math.round((value + Number.EPSILON) * 100) / 100;
 
-  console.log("validateAgainstPolicy called with:", {
-    claimData: {
-      category: claimData.category,
-      businessUnit: claimData.businessUnit,
-      lineItemsCount: claimData.lineItems?.length,
-      grandTotal: claimData.grandTotal,
-    },
-    policy: {
-      id: policy._id,
-      categories: policy.claimCategories,
-      categoriesCount: policy.claimCategories?.length,
-      firstCategory: policy.claimCategories?.[0],
-      lastCategory: policy.claimCategories?.[policy.claimCategories?.length - 1]
-    },
-  });
-
-  try {
-    // Validate line items
-    if (claimData.lineItems && Array.isArray(claimData.lineItems)) {
-      for (const lineItem of claimData.lineItems) {
-        // GST validation for flight travel
-        if (
-          lineItem.subCategory &&
-          lineItem.subCategory.toLowerCase().includes("flight")
-        ) {
-          if (!lineItem.gstTotal || lineItem.gstTotal <= 0) {
-            violations.push({
-              code: "GST_REQUIRED",
-              message: "GST is mandatory for flight travel expenses",
-              level: "error",
-              field: "gstTotal",
-              lineItemId: lineItem._id,
-            });
-          }
-        }
-
-        // Optional GST validation for other categories
-        if (
-          lineItem.subCategory &&
-          !lineItem.subCategory.toLowerCase().includes("flight") &&
-          lineItem.gstTotal &&
-          lineItem.gstTotal > 0
-        ) {
-          // GST is provided but not required - this is fine, just log it
-          console.log(
-            `GST provided for non-flight category: ${lineItem.subCategory}`
-          );
-        }
-
-        // Validate amount
-        if (!lineItem.amount || lineItem.amount <= 0) {
-          violations.push({
-            code: "INVALID_AMOUNT",
-            message: "Amount must be greater than 0",
-            level: "error",
-            field: "amount",
-            lineItemId: lineItem._id,
-          });
-        }
-
-        // Validate description
-        if (!lineItem.description || lineItem.description.trim().length < 10) {
-          violations.push({
-            code: "INVALID_DESCRIPTION",
-            message: "Description must be at least 10 characters",
-            level: "error",
-            field: "description",
-            lineItemId: lineItem._id,
-          });
-        }
-      }
-    }
-
-    // Always use categoryMaster categories for validation
-    console.log("Validating category:", {
-      providedCategory: claimData.category,
-      validCategories: validCategories,
-      categoryExists: validCategories.includes(claimData.category),
-      categoryType: typeof claimData.category,
-      validCategoriesType: typeof validCategories,
-      validCategoriesLength: validCategories.length,
-    });
-
-    if (!claimData.category || !validCategories.includes(claimData.category)) {
-      violations.push({
-        code: "INVALID_CATEGORY",
-        message: `Category must be one of: ${validCategories.join(", ")}`,
-        level: "error",
-        field: "category",
-      });
-    }
-
-    // Always use categoryMaster business units for validation
-    if (
-      !claimData.businessUnit ||
-      !validBusinessUnits.includes(claimData.businessUnit)
-    ) {
-      violations.push({
-        code: "INVALID_BUSINESS_UNIT",
-        message: `Business unit must be one of: ${validBusinessUnits.join(
-          ", "
-        )}`,
-        level: "error",
-        field: "businessUnit",
-      });
-    }
-
-    // Validate mandatory file attachments - REMOVED for now since attachments are uploaded separately
-    // This validation will be moved to a separate endpoint or handled differently
-    /*
-    if (!claimData.attachments || claimData.attachments.length === 0) {
-      violations.push({
-        code: 'MANDATORY_ATTACHMENTS',
-        message: 'At least one file attachment is required',
-        level: 'error',
-        field: 'attachments'
-      });
-    } else {
-      // Check if at least one PDF is included
-      const hasPdf = claimData.attachments.some(attachment => {
-        const fileName = attachment.name || attachment.originalname || '';
-        return fileName.toLowerCase().endsWith('.pdf');
-      });
-      
-      if (!hasPdf) {
-        violations.push({
-          code: 'MANDATORY_PDF',
-          message: 'At least one PDF attachment is required',
-          level: 'error',
-          field: 'attachments'
-        });
-      }
-    }
-    */
-
-    // Validate total amount
-    if (
-      claimData.grandTotal &&
-      claimData.grandTotal > policy.maxAmountBeforeFinanceManager
-    ) {
-      violations.push({
-        code: "AMOUNT_EXCEEDS_LIMIT",
-        message: `Amount exceeds limit of ₹${policy.maxAmountBeforeFinanceManager.toLocaleString()}`,
-        level: "warn",
-        field: "grandTotal",
-      });
-    }
-
-    return {
-      isValid: violations.filter((v) => v.level === "error").length === 0,
-      violations,
-    };
-  } catch (error) {
-    console.error("Policy validation error:", error);
-    violations.push({
-      code: "VALIDATION_ERROR",
-      message: "Error during validation",
-      level: "error",
-    });
-
-    return {
-      isValid: false,
-      violations,
-    };
-  }
-};
-
-/**
- * Compute totals for a claim
- */
 export const computeClaimTotals = async (claimData, policy) => {
-  try {
-    let grandTotal = 0;
-    let totalsByHead = {};
-
-    // Calculate totals from line items
-    if (claimData.lineItems && Array.isArray(claimData.lineItems)) {
-      for (const lineItem of claimData.lineItems) {
-        const amount = lineItem.amountInINR || lineItem.amount || 0;
-        grandTotal += amount;
-
-        // Group by category
-        const category = lineItem.subCategory || "Other";
-        if (!totalsByHead[category]) {
-          totalsByHead[category] = 0;
-        }
-        totalsByHead[category] += amount;
-      }
+  const items = claimData.lineItems || [];
+  const rates = items.some(item => item.currency && item.currency !== 'INR') ? await exchangeRates(policy) : { INR: 1 };
+  let grandTotal = 0;
+  const totalsByHead = {};
+  for (const item of items) {
+    if (!money(item.amount) || item.amount <= 0 || !(rates[item.currency || 'INR'] > 0)) {
+      throw Object.assign(new Error('Invalid amount or currency'), { status: 400 });
     }
-
-    // Subtract advances
-    let advancesTotal = 0;
-    if (claimData.advances && Array.isArray(claimData.advances)) {
-      advancesTotal = claimData.advances.reduce(
-        (sum, advance) => sum + (advance.amount || 0),
-        0
-      );
-    }
-
-    const netPayable = grandTotal - advancesTotal;
-
-    return {
-      grandTotal,
-      advancesTotal,
-      netPayable,
-      totalsByHead,
-    };
-  } catch (error) {
-    console.error("Error computing claim totals:", error);
-    return {
-      grandTotal: 0,
-      advancesTotal: 0,
-      netPayable: 0,
-      totalsByHead: {},
-    };
+    item.amountInINR = round((item.amount + (item.gstTotal || 0)) * rates[item.currency || 'INR']);
+    grandTotal = round(grandTotal + item.amountInINR);
+    totalsByHead[item.subCategory] = round((totalsByHead[item.subCategory] || 0) + item.amountInINR);
   }
+  let advancesTotal = 0;
+  for (const advance of claimData.advances || []) {
+    if (!money(advance.amount)) throw Object.assign(new Error('Advances must be non-negative numbers'), { status: 400 });
+    advancesTotal = round(advancesTotal + advance.amount);
+  }
+  return { grandTotal, advancesTotal, netPayable: round(grandTotal - advancesTotal), totalsByHead };
 };
 
-/**
- * Get current policy
- */
+export const validateAgainstPolicy = async (data, policy, { checkDocuments = true } = {}) => {
+  const violations = [];
+  const add = (code, message, level = 'error') => violations.push({ code, message, level });
+  const categories = policy.claimCategories?.length ? policy.claimCategories : validCategories;
+  if (!categories.includes(data.category)) add('INVALID_CATEGORY', 'Choose an active expense category');
+  if (!validBusinessUnits.includes(data.businessUnit)) add('INVALID_BUSINESS_UNIT', 'Choose a valid business unit');
+  if (!Array.isArray(data.lineItems) || !data.lineItems.length || data.lineItems.length > 15) {
+    add('INVALID_ITEMS', 'Provide between 1 and 15 expense line items');
+  } else {
+    for (const [index, item] of data.lineItems.entries()) {
+      const prefix = `Line ${index + 1}: `;
+      if (!money(item.amount) || item.amount <= 0) add('INVALID_AMOUNT', prefix + 'amount must be a positive number');
+      if (item.amountInINR !== undefined && (!money(item.amountInINR) || item.amountInINR <= 0)) add('INVALID_INR', prefix + 'INR amount must be positive');
+      if (!['INR', 'USD', 'EUR'].includes(item.currency || 'INR')) add('INVALID_CURRENCY', prefix + 'unsupported currency');
+      if (!item.date || Number.isNaN(Date.parse(item.date))) add('INVALID_DATE', prefix + 'provide a valid expense date');
+      const definition = policy.categoryDefinitions?.find(category => category.name === data.category);
+      if (definition && !definition.subCategories.some(subcategory => subcategory.name === item.subCategory)) add('INVALID_SUBCATEGORY', prefix + 'choose a subcategory in this category');
+      if (typeof item.subCategory !== 'string' || !item.subCategory.trim()) add('INVALID_SUBCATEGORY', prefix + 'choose a subcategory');
+      if (typeof item.description !== 'string' || item.description.trim().length < 10) add('INVALID_DESCRIPTION', prefix + 'description must contain at least 10 characters');
+      if (item.gstTotal !== undefined && !money(item.gstTotal)) add('INVALID_GST', prefix + 'GST must be non-negative');
+      const sub = String(item.subCategory || '').toLowerCase();
+      const type = sub.includes('flight') ? 'flight' : sub.includes('train') ? 'train' : /hotel|lodging/.test(sub) ? 'lodging' : /meal|breakfast|lunch|dinner|snack/.test(sub) ? 'meal' : item.type || 'default';
+      if (type === 'flight' && !(item.gstTotal > 0)) add('GST_REQUIRED', prefix + 'GST is required for flights');
+      const required = policy.requiredDocuments?.[type] || policy.requiredDocuments?.default || [];
+      if (checkDocuments && required.length) {
+        const labels = new Set((item.attachments || []).map(file => file.label));
+        const missing = required.filter(label => !labels.has(label));
+        if (missing.length) add('MISSING_DOCUMENTS', prefix + 'attach: ' + missing.join(', '), policy.rulesBehavior?.missingDocuments === 'soft' ? 'warn' : 'error');
+      }
+      const cityClass = item.cityClass || data.cityClass || 'A';
+      if (!['A', 'B', 'C'].includes(cityClass)) add('INVALID_CITY_CLASS', prefix + 'choose city class A, B or C');
+      if (item.nights !== undefined && (!Number.isInteger(item.nights) || item.nights < 1 || item.nights > 365)) add('INVALID_NIGHTS', prefix + 'nights must be between 1 and 365');
+      const mealType = item.mealType || ['breakfast', 'lunch', 'dinner', 'snack'].find(meal => sub.includes(meal)) || 'lunch';
+      const cap = type === 'lodging' ? policy.lodgingCaps?.[cityClass] * (item.nights || 1) : type === 'meal' && mealType ? policy.mealCaps?.[cityClass]?.[mealType] : null;
+      if (cap && item.amountInINR > cap) add('CAP_EXCEEDED', prefix + `amount exceeds the INR ${cap} policy cap`, policy.rulesBehavior?.capExceeded === 'hard' ? 'error' : 'warn');
+    }
+  }
+  if (data.advances !== undefined && !Array.isArray(data.advances)) add('INVALID_ADVANCES', 'Advances must be a list');
+  else for (const advance of data.advances || []) if (!money(advance.amount)) add('INVALID_ADVANCE', 'Advances must be non-negative numbers');
+  return { isValid: !violations.some(item => item.level === 'error'), violations };
+};
+
+export const createDefaultPolicy = async () => Policy.create({
+  claimCategories: validCategories,
+  payoutChannels: ['Bank Transfer', 'Cash', 'Check']
+});
+
 export const getCurrentPolicy = async () => {
-  try {
-    let policy = await Policy.findOne().sort({ createdAt: -1 });
-
-    console.log("Policy lookup result:", {
-      found: !!policy,
-      policyId: policy?._id,
-      categories: policy?.claimCategories,
-      categoriesCount: policy?.claimCategories?.length,
-      firstCategory: policy?.claimCategories?.[0],
-      lastCategory: policy?.claimCategories?.[policy?.claimCategories?.length - 1]
-    });
-
-    if (!policy) {
-      console.log("No policy found, creating default policy...");
-      // Create default policy if none exists using categoryMaster
-      policy = new Policy({
-        approvalMode: "both",
-        claimCategories: validCategories, // Use categories from categoryMaster
-        maxAmountBeforeFinanceManager: 10000,
-        allowedFileTypes: ["pdf", "jpg", "jpeg", "png"],
-        maxFileSizeMB: 10,
-        payoutChannels: ["Bank Transfer", "Cash", "Check"],
-        autoAssignSupervisors: false,
-        claimRetentionDays: 365,
-      });
-      await policy.save();
-      console.log("Default policy created:", {
-        policyId: policy._id,
-        categories: policy.claimCategories,
-        categoriesCount: policy.claimCategories?.length,
-        firstCategory: policy.claimCategories?.[0],
-        lastCategory: policy.claimCategories?.[policy.claimCategories?.length - 1]
-      });
-    } else {
-      // Check if existing policy has outdated categories and update them
-      const hasOldCategories = policy.claimCategories.some(cat => 
-        ['Travel', 'Healthcare', 'Office', 'Training', 'Other'].includes(cat)
-      );
-      
-      if (hasOldCategories || policy.claimCategories.length !== validCategories.length) {
-        console.log("Updating policy with new categories from categoryMaster...");
-        policy.claimCategories = validCategories;
-        await policy.save();
-        console.log("Policy updated with new categories:", {
-          policyId: policy._id,
-          categories: policy.claimCategories,
-          categoriesCount: policy.claimCategories?.length
-        });
-      }
-    }
-
-    return policy;
-  } catch (error) {
-    console.error("Error getting current policy:", error);
-    return null;
-  }
+  return await Policy.findOne().sort({ createdAt: -1 }) || await createDefaultPolicy();
 };
 
-/**
- * Create default policy if none exists
- */
-export const createDefaultPolicy = async () => {
-  try {
-    const policy = new Policy({
-      approvalMode: "both",
-      claimCategories: [
-        "Travel & Lodging",
-        "Client Entertainment & Business Meals",
-        "Employee Welfare & HR",
-        "Training & Development",
-        "Marketing & Business Development",
-        "Subscriptions & Memberships",
-        "Office & Admin",
-        "IT & Software",
-        "Project / Client-Billable Expenses",
-        "Finance, Legal & Compliance",
-        "Advances & Reconciliations",
-      ],
-      maxAmountBeforeFinanceManager: 10000,
-      allowedFileTypes: ["pdf", "jpg", "jpeg", "png"],
-      maxFileSizeMB: 10,
-      payoutChannels: ["Bank Transfer", "Cash", "Check"],
-      autoAssignSupervisors: false,
-      claimRetentionDays: 365,
-    });
-
-    await policy.save();
-    return policy;
-  } catch (error) {
-    console.error("Error creating default policy:", error);
-    throw error;
-  }
-};
-
-// Validate file upload
 export const validateFileUpload = (file, policy) => {
   const violations = [];
 

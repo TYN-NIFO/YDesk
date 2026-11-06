@@ -81,7 +81,7 @@ export default function FilterBar({
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="text-sm text-gray-500 hover:text-gray-700 flex items-center space-x-1"
+              className="ui-button ui-button-secondary text-sm text-gray-500 hover:text-gray-700 flex items-center space-x-1"
             >
               <X className="w-4 h-4" />
               <span>Clear</span>
@@ -90,7 +90,7 @@ export default function FilterBar({
           
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center space-x-1 text-sm text-gray-500 hover:text-gray-700"
+            className="ui-button ui-button-secondary flex items-center space-x-1 text-sm text-gray-500 hover:text-gray-700"
           >
             <span>{isExpanded ? 'Hide' : 'Show'} Filters</span>
             <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -111,12 +111,12 @@ export default function FilterBar({
                 </label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
+                  <input aria-label="Search"
                     type="text"
                     placeholder="Search claims..."
                     value={filters.search}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="ui-control w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -128,10 +128,10 @@ export default function FilterBar({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Employee
                 </label>
-                <select
+                <select aria-label="Employee"
                   value={filters.employeeId}
                   onChange={(e) => handleFilterChange('employeeId', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={employeesLoading}
                 >
                   <option value="">All Employees</option>
@@ -150,10 +150,10 @@ export default function FilterBar({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Category
                 </label>
-                <select
+                <select aria-label="Category"
                   value={filters.category}
                   onChange={(e) => handleFilterChange('category', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Categories</option>
                   {categories.map((category) => (
@@ -170,10 +170,10 @@ export default function FilterBar({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Status
               </label>
-              <select
+              <select aria-label="Status"
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">All Status</option>
                 <option value="submitted">Submitted</option>
@@ -191,11 +191,11 @@ export default function FilterBar({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Start Date
                   </label>
-                  <input
+                  <input aria-label="Start Date"
                     type="date"
                     value={filters.startDate}
                     onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
@@ -203,11 +203,11 @@ export default function FilterBar({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     End Date
                   </label>
-                  <input
+                  <input aria-label="End Date"
                     type="date"
                     value={filters.endDate}
                     onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="ui-control w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </>

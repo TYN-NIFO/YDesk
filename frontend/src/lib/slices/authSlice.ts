@@ -5,6 +5,7 @@ interface User {
   name: string;
   email: string;
   role: 'employee' | 'supervisor' | 'finance_manager' | 'executive' | 'admin';
+  grievanceAccess?: 'handler' | 'summary' | null;
   supervisorLevel?: number;
   department?: string;
   isActive: boolean;
@@ -95,7 +96,7 @@ const authSlice = createSlice({
             });
 
             // Check if token is expired
-            let isTokenValid = true;
+            let isTokenValid = false;
             if (accessToken) {
               try {
                 const payload = JSON.parse(atob(accessToken.split('.')[1]));

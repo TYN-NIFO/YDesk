@@ -57,6 +57,7 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  tokenVersion: { type: Number, default: 0 },
   lastLoginAt: {
     type: Date
   },
@@ -78,6 +79,13 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  // Grievance access: handlers see and act on every grievance, summary users
+  // see aggregate counts only. Set by an admin, never by the user.
+  grievanceAccess: {
+    type: String,
+    enum: ['handler', 'summary', null],
+    default: null
   },
   // Password reset fields
   resetPasswordToken: {
@@ -112,6 +120,7 @@ userSchema.methods.toPublicJSON = function() {
   delete user.passwordHash;
   delete user.resetPasswordToken;
   delete user.resetPasswordExpires;
+  delete user.tokenVersion;
   return user;
 };
 

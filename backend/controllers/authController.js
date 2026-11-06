@@ -10,6 +10,7 @@ import RefreshToken from '../models/RefreshToken.js';
 import AuditLog from '../models/AuditLog.js';
 import emailService from '../services/emailService.js';
 import sendgridEmailService from '../services/sendgridEmailService.js';
+import { revokeSessions } from '../services/sessionService.js';
 
 // Determine which email service to use
 const getEmailService = () => {
@@ -41,6 +42,7 @@ const generateAccessToken = (user) => {
       userId: user._id,
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion || 0,
       jti: uuidv4(),
       type: 'access'
     },
@@ -69,11 +71,15 @@ const setRefreshTokenCookie = (res, token) => {
     secure: secureCookies,
     sameSite,
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    path: '/api/auth/refresh/',
+    path: '/api/auth/',
     ...(cookieDomain ? { domain: cookieDomain } : {})
   };
 
   res.cookie('refreshToken', token, cookieOptions);
+  res.clearCookie('refreshToken', {
+    httpOnly: true, secure: secureCookies, sameSite,
+    path: '/api/auth/refresh/', ...(cookieDomain ? { domain: cookieDomain } : {})
+  });
 };
 
 // Clear refresh token cookie
@@ -87,11 +93,12 @@ const clearRefreshTokenCookie = (res) => {
     httpOnly: true,
     secure: secureCookies,
     sameSite,
-    path: '/api/auth/refresh/',
+    path: '/api/auth/',
     ...(cookieDomain ? { domain: cookieDomain } : {})
   };
 
   res.clearCookie('refreshToken', cookieOptions);
+  res.clearCookie('refreshToken', { ...cookieOptions, path: '/api/auth/refresh/' });
 };
 
 // Create audit log entry
@@ -194,13 +201,13 @@ const refresh = async (req, res) => {
     }
 
     // Find refresh token in database
-    const tokenDoc = await RefreshToken.findOne({
+    const tokenDoc = await RefreshToken.findOneAndUpdate({
       tokenHash: RefreshToken.hashToken(refreshToken),
       isRevoked: false,
       expiresAt: { $gt: new Date() }
-    });
+    }, { $set: { isRevoked: true } }, { new: false });
 
-    if (!tokenDoc || !tokenDoc.verifyToken(refreshToken)) {
+    if (!tokenDoc) {
       return res.status(401).json({ 
         error: 'Authentication failed',
         details: 'Invalid or expired refresh token' 
@@ -222,8 +229,6 @@ const refresh = async (req, res) => {
     const newJti = uuidv4();
 
     // Revoke old token and create new one (token rotation)
-    tokenDoc.isRevoked = true;
-    await tokenDoc.save();
 
     await RefreshToken.create({
       userId: user._id,
@@ -256,6 +261,7 @@ const refresh = async (req, res) => {
 // Logout
 const logout = async (req, res) => {
   try {
+    await revokeSessions(req.user._id);
     const refreshToken = req.cookies.refreshToken;
     
     if (refreshToken) {
@@ -329,7 +335,11 @@ const getProfile = async (req, res) => {
 };
 
 // Avatar upload
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 4 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, callback) => callback(null, ['image/jpeg', 'image/png'].includes(file.mimetype))
+});
 const uploadAvatar = [
   upload.single('avatar'),
   async (req, res) => {
@@ -338,7 +348,7 @@ const uploadAvatar = [
         return res.status(400).json({ error: 'No file uploaded' });
       }
       const info = await storageService.save(req.file);
-      const publicUrl = `/uploads/${info.storageKey}`;
+      const publicUrl = info.url;
 
       await User.findByIdAndUpdate(req.user._id, { avatarUrl: publicUrl });
 
@@ -410,6 +420,10 @@ const changePassword = async (req, res) => {
       });
     }
 
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
     const user = await User.findById(req.user._id);
     
     // Verify current password
@@ -425,10 +439,7 @@ const changePassword = async (req, res) => {
     await user.save();
 
     // Revoke all refresh tokens for this user
-    await RefreshToken.updateMany(
-      { userId: user._id },
-      { isRevoked: true }
-    );
+    await revokeSessions(user._id);
 
     await createAuditLog(user._id, 'PASSWORD_CHANGE', 'AUTH', { 
       ipAddress: req.ip,
@@ -468,7 +479,7 @@ const forgotPassword = async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    user.resetPasswordToken = resetToken;
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
     user.resetPasswordExpires = resetTokenExpiry;
     await user.save();
 
@@ -520,7 +531,7 @@ const resetPassword = async (req, res) => {
     }
 
     const user = await User.findOne({
-      resetPasswordToken: token,
+      resetPasswordToken: crypto.createHash('sha256').update(token).digest('hex'),
       resetPasswordExpires: { $gt: Date.now() }
     });
 
@@ -538,10 +549,7 @@ const resetPassword = async (req, res) => {
     await user.save();
 
     // Revoke all refresh tokens for this user (logout from all devices)
-    await RefreshToken.updateMany(
-      { userId: user._id },
-      { isRevoked: true }
-    );
+    await revokeSessions(user._id);
 
     // Send confirmation email
     try {
@@ -571,10 +579,7 @@ const revokeUserSessions = async (req, res) => {
     const { userId } = req.params;
     
     // Revoke all refresh tokens for the user
-    await RefreshToken.updateMany(
-      { userId },
-      { isRevoked: true }
-    );
+    await revokeSessions(userId);
 
     // Create audit log
     await createAuditLog(req.user._id, 'REVOKE_SESSIONS', 'USER', { 

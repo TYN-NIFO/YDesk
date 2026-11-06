@@ -1,38 +1,54 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 import { RootState } from '@/lib/store';
-import { useGetClaimsQuery, useGetClaimStatsQuery, useLogoutMutation } from '@/lib/api';
-import { useDispatch } from 'react-redux';
-import { logout } from '@/lib/slices/authSlice';
-import authService from '@/lib/authService';
-import toast from 'react-hot-toast';
+import { useGetClaimsQuery, useGetClaimStatsQuery } from '@/lib/api';
+import { formatCurrency } from '@/lib/currencyConverter';
 import {
   Plus,
-  LogOut,
-  User,
   FileText,
-  DollarSign,
   Clock,
   CheckCircle,
   AlertCircle,
   Eye,
   Edit,
-  Trash2,
   Calendar,
   List,
-  Plane
+  Plane,
+  LayoutDashboard,
+  Receipt
 } from 'lucide-react';
 import ImprovedClaimForm from './ImprovedClaimForm';
-import ClaimList from './ClaimList';
 import LeaveMonthlyView from './LeaveMonthlyView';
 import EmployeeLeaveDashboard from './EmployeeLeaveDashboard';
 import TravelGuidelines from './TravelGuidelines';
+import { PageHeading } from './ui/WorkspaceUI';
 
 
 type ViewMode = 'claims' | 'leaves' | 'travel-guidelines' | 'my-calendar' | 'leave-dashboard';
+
+// Same wording as the claim detail page
+const statusLabels: Record<string, string> = {
+  submitted: 'Awaiting review',
+  finance_approved: 'Approved by finance',
+  approved: 'Approved',
+  paid: 'Paid',
+  done: 'Completed',
+  rejected: 'Needs attention',
+};
+
+// Full class names so Tailwind keeps the badge styles in the build
+const statusClasses: Record<string, string> = {
+  submitted: 'status-submitted',
+  finance_approved: 'status-finance-approved',
+  approved: 'status-approved',
+  paid: 'status-paid',
+  done: 'status-done',
+  rejected: 'status-rejected',
+};
 
 export default function EmployeeDashboard() {
   const [showClaimForm, setShowClaimForm] = useState(false);
@@ -43,26 +59,7 @@ export default function EmployeeDashboard() {
   const { data: claimsData, isLoading: claimsLoading, error: claimsError } = useGetClaimsQuery({ limit: 1000 });
   const { data: claimStats } = useGetClaimStatsQuery({ scope: 'own' });
   const claims = claimsData?.claims || [];
-  const [logoutMutation] = useLogoutMutation();
   const router = useRouter();
-  const dispatch = useDispatch();
-
-  // Handle logout
-  const handleLogout = async () => {
-    try {
-      await logoutMutation(undefined).unwrap();
-      await authService.logout();
-      dispatch(logout());
-      router.push('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('Logout failed, redirecting to login...');
-      // Force logout even if API call fails
-      await authService.logout();
-      dispatch(logout());
-      router.push('/login');
-    }
-  };
 
   // Calculate statistics
   const calculateStats = () => {
@@ -84,276 +81,194 @@ export default function EmployeeDashboard() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2">Loading...</span>
+      <div className="ui-page text-center text-sm text-[var(--ui-muted)]">Loading…</div>
+    );
+  }
+
+  if (showClaimForm) {
+    return (
+      <div className="ui-page">
+        <ImprovedClaimForm
+          onClose={() => setShowClaimForm(false)}
+          employeeId={user?._id}
+        />
       </div>
     );
   }
 
+  const statTiles = [
+    { label: 'Total claims', value: stats.total, icon: FileText, iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
+    { label: 'Awaiting review', value: stats.pending, icon: Clock, iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600' },
+    { label: 'Approved', value: stats.approved, icon: CheckCircle, iconBg: 'bg-green-100', iconColor: 'text-green-600' },
+    { label: 'Needs attention', value: stats.rejected, icon: AlertCircle, iconBg: 'bg-red-100', iconColor: 'text-red-600' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <User className="h-8 w-8 text-blue-600" />
+    <div className="ui-page">
+      <PageHeading
+        title="My workspace"
+        description={`Welcome back, ${user.name}. Track your expense claims, time off and travel guidance.`}
+        icon={LayoutDashboard}
+        actions={currentView === 'claims' && (
+          <button type="button" onClick={() => setShowClaimForm(true)} className="ui-button ui-button-primary">
+            <Plus size={16} />
+            New claim
+          </button>
+        )}
+      />
+
+      {/* Navigation Tabs */}
+      <nav className="flex gap-7 overflow-x-auto overflow-y-hidden border-b border-[var(--ui-line)] mb-8" aria-label="Workspace sections">
+        {[
+          { key: 'claims' as ViewMode, label: 'Claims', icon: FileText },
+          { key: 'leaves' as ViewMode, label: 'Leaves', icon: List },
+          { key: 'travel-guidelines' as ViewMode, label: 'Travel guidelines', icon: Plane },
+          { key: 'my-calendar' as ViewMode, label: 'My calendar', icon: Calendar },
+          ...(user?.role === 'executive' ? [{ key: 'leave-dashboard' as ViewMode, label: 'Leave dashboard', icon: Calendar }] : [])
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setCurrentView(tab.key)}
+            aria-current={currentView === tab.key ? 'page' : undefined}
+            className={`ui-tab flex items-center gap-2 whitespace-nowrap border-b-[3px] ${currentView === tab.key ? 'border-blue-500' : 'border-transparent hover:text-[var(--ui-ink)]'}`}
+          >
+            <tab.icon size={16} strokeWidth={1.8} />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {currentView === 'claims' && (
+        <div className="space-y-6">
+          {/* Statistics */}
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-6">
+            <div className="ui-kpi-grid">
+              {statTiles.map((tile) => (
+                <div key={tile.label} className="ui-kpi-card">
+                  <span className={`ui-kpi-icon ${tile.iconBg} ${tile.iconColor}`}><tile.icon size={18} /></span>
+                  <div className="ui-kpi-body">
+                    <p className="ui-kpi-label">{tile.label}</p>
+                    <p className="ui-kpi-value">{tile.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="ui-summary-total rounded-[14px]">
+              <p>Total claimed</p>
+              <strong>{formatCurrency(stats.totalAmount, 'INR')}</strong>
+              <small>Across all your claims, including those still in review.</small>
+            </div>
+          </div>
+
+          {/* Claims List */}
+          <section className="ui-form-section">
+            <div className="ui-section-heading">
+              <div className="ui-section-title">
+                <span className="ui-section-icon"><Receipt size={18} /></span>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Employee Dashboard</h1>
-                  <p className="text-sm text-gray-600">Welcome back, {user.name}</p>
+                  <h2>My claims</h2>
+                  <p>View and manage your expense claims</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              {currentView === 'claims' && (
-                <>
-                  <button
-                    onClick={() => setShowClaimForm(true)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Claim
+            {claimsLoading ? (
+              <div className="ui-section-content text-center text-sm text-[var(--ui-muted)]">Loading claims…</div>
+            ) : claimsError ? (
+              <div className="ui-section-content">
+                <div className="ui-empty">
+                  <span className="ui-empty-icon"><AlertCircle size={22} /></span>
+                  <h3>Couldn&apos;t load your claims</h3>
+                  <p>The server may be waking up. Refresh the page in a few seconds.</p>
+                </div>
+              </div>
+            ) : claims.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="ui-table">
+                  <thead className="ui-table-head">
+                    <tr>
+                      {['Claim ID', 'Category', 'Amount', 'Status', 'Submitted', ''].map((label, i) => (
+                        <th key={label || i} className={`ui-table-th ${label === 'Amount' ? 'text-right' : 'text-left'}`}>
+                          {label || <span className="sr-only">Actions</span>}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {claims.map((claim: any) => (
+                      <tr key={claim._id}>
+                        <td className="ui-table-td whitespace-nowrap">
+                          <button type="button" onClick={() => router.push(`/claims/${claim._id}`)} className="font-medium text-[var(--ui-ink)] hover:underline">
+                            {claim.claimId || claim._id.slice(-8)}
+                          </button>
+                        </td>
+                        <td className="ui-table-td">{claim.category}</td>
+                        <td className="ui-table-td whitespace-nowrap text-right tabular-nums font-medium text-[var(--ui-ink)]">
+                          {formatCurrency(claim.grandTotal || 0, 'INR')}
+                        </td>
+                        <td className="ui-table-td whitespace-nowrap">
+                          <span className={`status-badge ${statusClasses[claim.status] || 'bg-gray-100 text-gray-700'}`}>
+                            {statusLabels[claim.status] || claim.status}
+                          </span>
+                        </td>
+                        <td className="ui-table-td whitespace-nowrap">{format(new Date(claim.createdAt), 'dd MMM yyyy')}</td>
+                        <td className="ui-table-td whitespace-nowrap">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/claims/${claim._id}`)}
+                              className="ui-icon-button"
+                              aria-label={`View ${claim.claimId || 'claim'}`}
+                              title="View details"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            {['submitted', 'rejected'].includes(claim.status) && (
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/claims/${claim._id}/edit`)}
+                                className="ui-icon-button"
+                                aria-label={`Edit ${claim.claimId || 'claim'}`}
+                                title="Edit claim"
+                              >
+                                <Edit size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="ui-section-content">
+                <div className="ui-empty">
+                  <span className="ui-empty-icon"><Receipt size={22} /></span>
+                  <h3>No claims yet</h3>
+                  <p>Create your first expense claim to get started.</p>
+                  <button type="button" onClick={() => setShowClaimForm(true)} className="ui-button ui-button-primary mt-5">
+                    <Plus size={16} />
+                    New claim
                   </button>
-                </>
-              )}
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              { key: 'claims' as ViewMode, label: 'Claims', icon: FileText },
-              { key: 'leaves' as ViewMode, label: 'Leaves', icon: List },
-              { key: 'travel-guidelines' as ViewMode, label: 'Travel Guidelines', icon: Plane },
-              { key: 'my-calendar' as ViewMode, label: 'My Calendar', icon: Calendar },
-              ...(user?.role === 'executive' ? [{ key: 'leave-dashboard' as ViewMode, label: 'Leave Dashboard', icon: Calendar }] : [])
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  setCurrentView(tab.key);
-                  setShowClaimForm(false);
-                }}
-                className={`flex items-center space-x-2 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${currentView === tab.key
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                <tab.icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {showClaimForm ? (
-          <ImprovedClaimForm
-            onClose={() => setShowClaimForm(false)}
-            employeeId={user?._id}
-          />
-        ) : (
-          <>
-            {currentView === 'claims' && (
-              <>
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <FileText className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Total Claims</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-yellow-100 rounded-lg">
-                        <Clock className="h-6 w-6 text-yellow-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Pending</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <CheckCircle className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Approved</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.approved}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-red-100 rounded-lg">
-                        <AlertCircle className="h-6 w-6 text-red-600" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">Rejected</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.rejected}</p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
-
-                {/* Total Amount Card */}
-                <div className="bg-white rounded-lg shadow p-6 mb-8">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <DollarSign className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Total Claimed Amount</p>
-                      <p className="text-3xl font-bold text-green-600">
-                        ₹{stats.totalAmount.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Claims List */}
-                <div className="bg-white rounded-lg shadow">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">My Claims</h2>
-                    <p className="text-sm text-gray-600">View and manage your expense claims</p>
-                  </div>
-
-                  <div className="p-6">
-                    {claimsLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <span className="ml-2">Loading claims...</span>
-                      </div>
-                    ) : claimsError ? (
-                      <div className="text-center py-8">
-                        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                        <p className="text-red-600">Failed to load claims</p>
-                      </div>
-                    ) : claims && claims.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Claim ID
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Category
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Amount
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Date
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {claims.map((claim: any) => (
-                              <tr key={claim._id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {claim._id.slice(-8)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {claim.category}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  ₹{claim.grandTotal?.toLocaleString() || '0'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${claim.status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
-                                    claim.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                      claim.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                        claim.status === 'finance_approved' ? 'bg-blue-100 text-blue-800' :
-                                          claim.status === 'paid' ? 'bg-purple-100 text-purple-800' :
-                                            'bg-gray-100 text-gray-800'
-                                    }`}>
-                                    {claim.status.replace('_', ' ').toUpperCase()}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {new Date(claim.createdAt).toLocaleDateString()}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <div className="flex space-x-2">
-                                    <button
-                                      onClick={() => router.push(`/claims/${claim._id}`)}
-                                      className="text-blue-600 hover:text-blue-900"
-                                      title="View Details"
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </button>
-                                    {['submitted', 'rejected'].includes(claim.status) && (
-                                      <button
-                                        onClick={() => router.push(`/claims/${claim._id}/edit`)}
-                                        className="text-green-600 hover:text-green-900"
-                                        title="Edit Claim"
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500">No claims found</p>
-                        <p className="text-sm text-gray-400 mt-1">Create your first claim to get started</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
+              </div>
             )}
+          </section>
+        </div>
+      )}
 
-            {currentView === 'leaves' && (
+      {currentView === 'leaves' && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-gray-900">Leaves</h2>
-                  <div className="flex space-x-3">
+                <div className="flex flex-wrap gap-4 justify-between items-center">
+                  <h2 className="text-xl font-semibold text-[var(--ui-ink)]">Leaves</h2>
+                  <div className="flex gap-3">
                     <select
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="ui-control !w-auto"
+                      aria-label="Year"
                     >
                       {[selectedYear - 2, selectedYear - 1, selectedYear, selectedYear + 1].map(year => (
                         <option key={year} value={year}>{year}</option>
@@ -363,7 +278,8 @@ export default function EmployeeDashboard() {
                     <select
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="ui-control !w-auto"
+                      aria-label="Month"
                     >
                       {Array.from({ length: 12 }, (_, i) => (
                         <option key={i + 1} value={i + 1}>
@@ -392,9 +308,6 @@ export default function EmployeeDashboard() {
             {currentView === 'leave-dashboard' && (
               <EmployeeLeaveDashboard userId={user?._id} />
             )}
-          </>
-        )}
-      </div>
     </div>
   );
 }

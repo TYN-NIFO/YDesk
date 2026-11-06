@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const refreshTokenSchema = new mongoose.Schema({
   userId: {
@@ -39,12 +39,14 @@ refreshTokenSchema.index({ isRevoked: 1 });
 
 // Method to hash token
 refreshTokenSchema.statics.hashToken = function(token) {
-  return bcrypt.hashSync(token, 12);
+  return crypto.createHash('sha256').update(token).digest('hex');
 };
 
 // Method to verify token
 refreshTokenSchema.methods.verifyToken = function(token) {
-  return bcrypt.compareSync(token, this.tokenHash);
+  const actual = Buffer.from(this.constructor.hashToken(token));
+  const expected = Buffer.from(this.tokenHash);
+  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 };
 
 // TTL index to automatically delete expired tokens (jti field already has unique index)

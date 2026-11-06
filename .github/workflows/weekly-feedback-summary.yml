@@ -1,0 +1,52 @@
+name: Weekly feedback summary
+
+on:
+  schedule:
+    - cron: '30 12 * * 5'
+    - cron: '0 13 * * 5'
+    - cron: '30 13 * * 5'
+  workflow_dispatch:
+    inputs:
+      send:
+        description: Send real emails (requires the enable variable)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-feedback-summary
+  cancel-in-progress: false
+
+jobs:
+  summary:
+    if: vars.WEEKLY_SUMMARY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --omit=dev
+      - name: Generate weekly feedback summary
+        env:
+          NODE_ENV: production
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          WEEKLY_SUMMARY_ENABLED: ${{ vars.WEEKLY_SUMMARY_ENABLED }}
+          WEEKLY_SUMMARY_RECIPIENTS: ${{ vars.WEEKLY_SUMMARY_RECIPIENTS }}
+          SEND_EMAIL: ${{ github.event_name == 'schedule' || inputs.send }}
+        run: |
+          if [ "$SEND_EMAIL" = "true" ]; then
+            node scripts/weekly-feedback-summary.js --send
+          else
+            node scripts/weekly-feedback-summary.js
+          fi

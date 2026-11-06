@@ -2,10 +2,12 @@ import express from 'express';
 import Claim from '../models/Claim.js';
 import ExcelJS from 'exceljs';
 import User from '../models/User.js';
+import { auth } from '../middleware/auth.js';
+import { rbac } from '../middleware/rbac.js';
 
 const router = express.Router();
 
-router.get('/getClaimsExcel', async (req, res) => {
+router.get('/getClaimsExcel', auth, rbac(['admin', 'finance_manager', 'executive']), async (req, res) => {
   try {
     const claims = await Claim.find({ 'financeApproval.status': 'approved' })
       .populate('employeeId', 'name email');

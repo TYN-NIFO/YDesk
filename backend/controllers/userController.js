@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import AuditLog from '../models/AuditLog.js';
 import { validationResult } from 'express-validator';
+import { revokeSessions } from '../services/sessionService.js';
 
 // Create audit log entry
 const createAuditLog = async (userId, action, resource, details = {}) => {
@@ -126,6 +127,7 @@ const createUser = async (req, res) => {
 // Update user
 const updateUser = async (req, res) => {
   try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Administrator access required' });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -233,6 +235,7 @@ const resetPassword = async (req, res) => {
 
     user.password = password; // Will be hashed by virtual
     await user.save();
+    await revokeSessions(user._id);
 
     // Create audit log
     await createAuditLog(req.user._id, 'RESET_PASSWORD', 'USER', {
@@ -338,6 +341,16 @@ const deleteUser = async (req, res) => {
         error: `Cannot delete user. They have ${leaveCount} associated leave records. Please deactivate them instead.` 
       });
     }
+
+    const Grievance = (await import('../models/Grievance.js')).default;
+    const grievanceCount = await Grievance.countDocuments({
+      $or: [{ employeeId: userId }, { 'statusHistory.changedBy': userId }]
+    });
+    if (grievanceCount > 0) {
+      return res.status(400).json({ error: 'This user has grievance records. Deactivate them instead.' });
+    }
+
+    await revokeSessions(userId);
 
     // Delete associated RefreshTokens
     const RefreshToken = (await import('../models/RefreshToken.js')).default;

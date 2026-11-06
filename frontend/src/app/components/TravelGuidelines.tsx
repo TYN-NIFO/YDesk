@@ -68,7 +68,7 @@ const guidelineSections = [
 export default function TravelGuidelines() {
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="ui-panel bg-white rounded-lg shadow p-6">
         <div className="flex items-start space-x-3">
           <div className="p-2 bg-blue-100 rounded-lg">
             <Plane className="h-6 w-6 text-blue-600" />
@@ -85,7 +85,7 @@ export default function TravelGuidelines() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <GuidelineCard section={guidelineSections[0]} />
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="ui-panel bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Suggested Accommodation Budget Limits</h3>
           <div className="space-y-5">
             {accommodationBudgets.map((budget) => (
@@ -113,7 +113,7 @@ export default function TravelGuidelines() {
 
 function GuidelineCard({ section }: { section: { title: string; items: string[] } }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="ui-panel bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{section.title}</h3>
       <ul className="space-y-3 text-sm text-gray-700 list-disc pl-5">
         {section.items.map((item) => (

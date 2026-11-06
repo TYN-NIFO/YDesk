@@ -39,7 +39,7 @@ const userValidation = [
     .normalizeEmail()
     .withMessage("Valid email is required"),
   body("role")
-    .isIn(["employee", "supervisor", "finance_manager", "admin"])
+    .isIn(["employee", "supervisor", "finance_manager", "executive", "admin"])
     .withMessage("Valid role is required"),
   body("supervisorLevel")
     .optional()
@@ -381,7 +381,7 @@ router.post("/", auth, requireAdmin, userValidation, createUser);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch("/:id", auth, canAccessUser, userValidation, updateUser);
+router.patch("/:id", auth, requireAdmin, userValidation, updateUser);
 
 /**
  * @swagger

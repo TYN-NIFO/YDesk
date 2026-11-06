@@ -1,51 +1,8 @@
-// IMPORTANT: Load environment variables FIRST, before any other imports
-// that might use environment variables (like storage service)
-import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import './config/environment.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load environment variables based on environment, but only if the file exists.
-// On platforms like Render/Heroku, environment variables are injected and no file is present.
-// Try to load .env first (common convention), then environment-specific files
-const envPath = path.join(__dirname, '.env');
-const envFilename = process.env.NODE_ENV === 'production' ? 'config.production.env' : 'config.env';
-const configEnvPath = path.join(__dirname, envFilename);
-
-// Load .env first if it exists (highest priority)
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
-  console.log('✅ Loaded .env file from:', envPath);
-} else {
-  console.log('⚠️  .env file not found at:', envPath);
-}
-
-// Then load environment-specific config (will override .env values)
-if (fs.existsSync(configEnvPath)) {
-  dotenv.config({ path: configEnvPath });
-  console.log('✅ Loaded config file from:', configEnvPath);
-} else {
-  console.log('⚠️  Config file not found at:', configEnvPath);
-}
-
-// Fallback to default dotenv behavior if no files found
-if (!fs.existsSync(envPath) && !fs.existsSync(configEnvPath)) {
-  dotenv.config();
-  console.log('⚠️  Using default dotenv (no .env files found)');
-}
-
-// Debug: Check if AWS credentials are loaded
-console.log('🔍 Environment check after loading:', {
-  hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
-  hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY,
-  hasRegion: !!process.env.AWS_REGION,
-  bucketName: process.env.AWS_S3_BUCKET_NAME || 'not set'
-});
-
-// Now import other modules (they can safely use environment variables)
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -61,6 +18,7 @@ import policyRoutes from './routes/policyRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import leaveRoutes from './routes/leaveRoutes.js';
 import holidayRoutes from './routes/holidayRoutes.js';
+import grievanceRoutes from './routes/grievanceRoutes.js';
 
 // Import Swagger
 import swaggerUi from 'swagger-ui-express';
@@ -122,7 +80,7 @@ const allowedOrigins = (() => {
   const envOrigins = [process.env.FRONTEND_URL, process.env.CORS_ORIGIN]
     .filter(Boolean)
     .map((v) => v.trim());
-  return [...new Set([...envOrigins, 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'])];
+  return [...new Set([...envOrigins, 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002'])];
 })();
 
 // Optional: regex-based origins for flexible environments (e.g., Vercel previews)
@@ -227,7 +185,7 @@ app.use(cookieParser(process.env.COOKIE_SECRET || 'default-secret'));
 if (process.env.NODE_ENV === 'production') {
   app.use(morgan('combined'));
 } else {
-  app.use(morgan('dev'));
+  if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 }
 
 // Serve uploaded files
@@ -272,6 +230,8 @@ app.use('/api/claims', claimRoutes);
 app.use('/api/excel', checkRoute);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/holidays', holidayRoutes);
+app.use('/api/grievances', grievanceRoutes);
+app.use('/api/feedback', grievanceRoutes);
 app.use('/api/policy', policyRoutes);
 app.use('/api/users', userRoutes);
 
@@ -292,7 +252,7 @@ app.use((err, req, res, next) => {
   }
 
   // Determine error status
-  const statusCode = err.statusCode || err.status || 500;
+  const statusCode = err.name === 'MulterError' ? 400 : err.statusCode || err.status || 500;
 
   // Prepare error response
   const errorResponse = {
@@ -349,7 +309,7 @@ const gracefulShutdown = (signal) => {
       console.log('HTTP server closed');
 
       // Close database connection
-      mongoose.connection.close(false, () => {
+      mongoose.connection.close().then(() => {
         console.log('MongoDB connection closed');
 
         // Stop Application Insights
@@ -388,4 +348,6 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (process.env.NODE_ENV !== 'test') startServer();
+
+export { app, startServer };

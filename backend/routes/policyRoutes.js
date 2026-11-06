@@ -1,4 +1,5 @@
 import express from 'express';
+import { z } from 'zod';
 import { auth } from '../middleware/auth.js';
 import { rbac } from '../middleware/rbac.js';
 import Policy from '../models/Policy.js';
@@ -155,24 +156,28 @@ router.get('/current', auth, async (req, res) => {
  */
 router.put('/', auth, rbac(['admin']), async (req, res) => {
   try {
-    const policyData = req.body;
-
-    // Validate required fields
-    if (!policyData.version) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: 'Version is required'
-      });
-    }
-
-    if (!policyData.mealCaps || !policyData.lodgingCaps || !policyData.requiredDocuments) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: 'mealCaps, lodgingCaps, and requiredDocuments are required'
-      });
-    }
+    const cap = z.number().finite().nonnegative();
+    const schema = z.object({
+      version: z.string().trim().min(1).max(60),
+      mealCaps: z.record(z.string(), z.record(z.string(), cap)),
+      lodgingCaps: z.record(z.string(), cap),
+      requiredDocuments: z.record(z.string(), z.array(z.string().trim().min(1))),
+      mileageRate: cap.optional(),
+      cityClasses: z.array(z.enum(['A', 'B', 'C'])).optional(),
+      rulesBehavior: z.object({ missingDocuments: z.enum(['hard', 'soft']), capExceeded: z.enum(['hard', 'soft']) }).optional(),
+      claimCategories: z.array(z.string().trim().min(1)).min(1).optional(),
+      categoryDefinitions: z.array(z.object({ name: z.string().trim().min(1), subCategories: z.array(z.object({ name: z.string().trim().min(1), itc: z.string().optional() })).min(1) })).min(1).optional(),
+      payoutChannels: z.array(z.string().trim().min(1)).min(1).optional(),
+      maxAmountBeforeFinanceManager: cap.optional(),
+      allowedFileTypes: z.array(z.string()).optional(),
+      maxFileSizeMB: z.number().positive().max(4).optional(),
+      exchangeRates: z.record(z.string(), z.number().finite().positive()).optional()
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Validation failed', details: parsed.error.issues.map(issue => issue.message).join('; ') });
+    const policyData = parsed.data;
+    if (policyData.categoryDefinitions) policyData.claimCategories = policyData.categoryDefinitions.map(category => category.name);
+    if (new Set(policyData.claimCategories || []).size !== (policyData.claimCategories || []).length) return res.status(400).json({ error: 'Category names must be unique' });
 
     // Create new policy version
     const policy = new Policy({

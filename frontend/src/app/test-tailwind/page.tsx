@@ -3,7 +3,7 @@
 export default function TestTailwind() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+      <div className="ui-panel max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Tailwind CSS Test</h1>
         
         <div className="space-y-4">
@@ -29,7 +29,7 @@ export default function TestTailwind() {
         </div>
         
         <div className="mt-6">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          <button className="ui-button ui-button-primary bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
             Test Button
           </button>
         </div>
