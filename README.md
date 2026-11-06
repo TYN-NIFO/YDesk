@@ -6,13 +6,15 @@ The portal is available at `/feedback`; `/grievances` redirects there and the le
 
 All five app roles can submit and see their own feedback. Explicit handler access permits review of other people's submissions; handlers cannot act on their own. Explicit summary access permits aggregate reports, not other people's details or attachments. Roles alone do not grant portal-wide access. The disposable local preview assigns handler access to admin/finance and summary access to executives so each view can be tested; employee and supervisor accounts see only their own submissions.
 
-Weekly email automation is implemented but opt-in and disabled by default. See `backend/EMAIL_SETUP.md` for its Monday schedule, eligible recipients, dry-run command, and deployment requirements.
+Weekly email automation is implemented but opt-in and disabled by default. Reports run on Fridays at 18:00 Asia/Kolkata, with retry runs at 18:30 and 19:00. See `backend/EMAIL_SETUP.md` for recipient permissions, reporting windows, dry-run commands, and deployment requirements.
 
 ## Local verification and preview
 
 Use Node.js 22 or newer. Install dependencies with `npm ci` in `backend` and `frontend`.
 
 - Backend checks: `cd backend`, then `npm run build` and `npm test`. Tests use a disposable MongoDB instance and stubbed storage; the first run downloads MongoDB.
+- Existing test-account checks: run `node scripts/check-feedback-test-accounts.js` from `backend` after installing dev dependencies. It reads up to 30 test/preview profiles from the configured database without changing it, then checks login, feedback access, and mocked weekly deliveries using disposable local copies with temporary passwords. Original passwords are neither read nor changed, and no real emails are sent.
+- Tracked checks against the original database: `node scripts/check-feedback-original-db.js --run` tests the latest local API using existing test accounts. It creates marked temporary feedback and audit records, saves their IDs and check results under `.local/verification/`, then deletes only that run's records and verifies cleanup. It uses local temporary tokens, captures email locally, and preserves existing accounts, feedback, passwords, sessions, and weekly delivery history. Allocated reference numbers are not reused. Resume interrupted cleanup with `node scripts/check-feedback-original-db.js --cleanup <absolute-report.json-path>` against the same configured database.
 - Frontend checks: `cd frontend`, then `npm run type-check`, `npm run lint`, and `npm run build`.
 - Isolated API preview: run `npm run dev:local` in `backend`. It listens on port 5000, creates temporary preview accounts, and prints a temporary password. It does not load production credentials. Receipts and email require real infrastructure and are intentionally unavailable in this preview.
 - Frontend preview in PowerShell: `$env:NEXT_PUBLIC_API_URL='http://127.0.0.1:5000/api'; npm run dev` from `frontend`.

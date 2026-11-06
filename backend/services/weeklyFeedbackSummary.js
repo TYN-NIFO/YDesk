@@ -6,7 +6,6 @@ import emailService from './emailService.js';
 import sendgridEmailService from './sendgridEmailService.js';
 
 const indiaOffset = 330 * 60000;
-const staleSendingMs = 10 * 60000;
 const templateVersion = 'v2';
 const perCategoryLimit = 10;
 const subjectLimit = 120;
@@ -30,6 +29,7 @@ async function resolveReport(now, persist) {
   const previous = await WeeklyReport.findOne({ status: 'sent' }).sort({ periodEnd: -1 }).lean();
   const periodStart = previous ? previous.periodEnd : week;
   if (!persist) return { week, periodStart, periodEnd: now, status: 'pending' };
+  await WeeklyReport.init();
   return WeeklyReport.findOneAndUpdate(
     { week },
     { $setOnInsert: { periodStart, periodEnd: now, status: 'pending' } },
@@ -48,19 +48,19 @@ const clip = value => {
   return text.length > subjectLimit ? `${text.slice(0, subjectLimit - 1)}…` : text;
 };
 
-export async function buildWeeklyFeedbackSummary(now = new Date(), period = summaryWeek(now)) {
+export async function buildWeeklyFeedbackSummary(now = new Date(), period = summaryWeek(now), { includeDetails = true } = {}) {
   const { start, end } = period;
-  const inWindow = { $gte: start, $lte: end };
+  const inWindow = { $gte: start, $lt: end };
   const [received, resolved, open, raised, touched] = await Promise.all([
     Grievance.countDocuments({ createdAt: inWindow }),
     Grievance.countDocuments({ resolvedAt: inWindow }),
     Grievance.countDocuments({ status: { $in: ['submitted', 'under_review'] } }),
-    Grievance.find({ createdAt: inWindow }).select('grievanceId category subject status createdAt').sort({ createdAt: 1 }).lean(),
-    Grievance.find({ 'statusHistory.changedAt': inWindow }).select('grievanceId category subject statusHistory').lean()
+    includeDetails ? Grievance.find({ createdAt: inWindow }).select('grievanceId category subject status createdAt').sort({ createdAt: 1 }).lean() : [],
+    includeDetails ? Grievance.find({ 'statusHistory.changedAt': inWindow }).select('grievanceId category subject statusHistory').lean() : []
   ]);
   const progress = touched.flatMap(grievance => grievance.statusHistory
     .map((entry, index, history) => ({ entry, from: history[index - 1]?.status }))
-    .filter(({ entry, from }) => from && from !== entry.status && entry.changedAt >= start && entry.changedAt <= end)
+    .filter(({ entry, from }) => from && from !== entry.status && entry.changedAt >= start && entry.changedAt < end)
     .map(({ entry, from }) => ({ grievanceId: grievance.grievanceId, subject: grievance.subject, from, to: entry.status, at: entry.changedAt })))
     .sort((a, b) => a.at - b.at);
   const categories = [...new Set([...GRIEVANCE_CATEGORIES, ...raised.map(item => item.category)])]
@@ -71,6 +71,15 @@ export async function buildWeeklyFeedbackSummary(now = new Date(), period = summ
   const range = `${date(start)} – ${date(end)}`;
   const url = new URL('/feedback', process.env.FRONTEND_URL || 'http://localhost:3000');
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('FRONTEND_URL must be an HTTP(S) URL');
+  if (!includeDetails) {
+    const footer = 'Counts only. Names, references, subjects, descriptions, notes, and attachments are excluded.';
+    return {
+      received, resolved, open,
+      subject: `YDesk weekly feedback summary: ${range}`,
+      text: `Weekly feedback summary\n${range}\n\nReceived this week: ${received}\nResolved this week: ${resolved}\nOpen now: ${open}\n\n${footer}\n${url.href}`,
+      html: `<div style="font-family:Arial,sans-serif;color:#0f2347"><h2>Weekly feedback summary</h2><p>${escapeHtml(range)}</p><p>Received this week: ${received}</p><p>Resolved this week: ${resolved}</p><p>Open now: ${open}</p><p>${footer}</p><p><a href="${escapeHtml(url.href)}">Open the feedback portal</a></p></div>`
+    };
+  }
   const footer = 'Subjects are included; names, descriptions, notes, and attachments are not. Sign in to view the details you have access to.';
   const text = [
     'Weekly feedback summary', range, '',
@@ -124,15 +133,12 @@ export async function sendWeeklyFeedbackSummary({ now = new Date(), dryRun = tru
   }
   const report = await resolveReport(now, !dryRun);
   const summary = await buildWeeklyFeedbackSummary(now, { start: report.periodStart, end: report.periodEnd });
-  const recipients = await User.find({ isActive: true, grievanceAccess: { $in: ['handler', 'summary'] } }).select('_id email');
+  const recipients = await User.find({ isActive: true, grievanceAccess: { $in: ['handler', 'summary'] } }).select('_id email grievanceAccess');
   const allowlist = (process.env.WEEKLY_SUMMARY_RECIPIENTS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
   const eligible = recipients.filter(user => !allowlist.length || allowlist.includes(user.email));
-  const result = { week: report.week.toISOString(), recipients: eligible.length, sent: 0, skipped: 0, failed: 0, dryRun };
+  const result = { week: report.week.toISOString(), recipients: eligible.length, sent: 0, skipped: 0, failed: 0, pending: 0, dryRun };
   if (dryRun) return result;
-  if (report.status === 'sent') {
-    result.skipped = eligible.length;
-    return result;
-  }
+  let aggregateSummary;
   const deliver = send || (message => (process.env.SENDGRID_API_KEY ? sendgridEmailService : emailService).sendEmail(message));
   await WeeklySummaryDelivery.init();
   for (const user of eligible) {
@@ -142,7 +148,7 @@ export async function sendWeeklyFeedbackSummary({ now = new Date(), dryRun = tru
         {
           week: report.week,
           userId: user._id,
-          $or: [{ status: 'failed' }, { status: 'sending', updatedAt: { $lt: new Date(Date.now() - staleSendingMs) } }]
+          status: 'failed'
         },
         { $set: { status: 'sending', error: '' } },
         { upsert: true, new: true }
@@ -152,14 +158,25 @@ export async function sendWeeklyFeedbackSummary({ now = new Date(), dryRun = tru
       throw error;
     }
     try {
-      await deliver({ to: user.email, subject: summary.subject, html: summary.html, text: summary.text });
-      await WeeklySummaryDelivery.updateOne({ _id: delivery._id }, { $set: { status: 'sent', sentAt: new Date() } });
-      result.sent++;
+      if (user.grievanceAccess === 'summary') {
+        aggregateSummary ||= await buildWeeklyFeedbackSummary(now, { start: report.periodStart, end: report.periodEnd }, { includeDetails: false });
+      }
+      const message = user.grievanceAccess === 'summary' ? aggregateSummary : summary;
+      await deliver({ to: user.email, subject: message.subject, html: message.html, text: message.text });
     } catch (error) {
       await WeeklySummaryDelivery.updateOne({ _id: delivery._id }, { $set: { status: 'failed', error: 'Email delivery failed' } });
       result.failed++;
+      continue;
     }
+    await WeeklySummaryDelivery.updateOne({ _id: delivery._id }, { $set: { status: 'sent', sentAt: new Date() } });
+    result.sent++;
   }
-  if (result.failed === 0) await WeeklyReport.updateOne({ _id: report._id }, { $set: { status: 'sent', sentAt: new Date() } });
+  const confirmed = await WeeklySummaryDelivery.countDocuments({ week: report.week, userId: { $in: eligible.map(user => user._id) }, status: 'sent' });
+  result.pending = eligible.length - confirmed;
+  if (eligible.length > 0 && result.pending === 0) {
+    await WeeklyReport.updateOne({ _id: report._id }, { $set: { status: 'sent', sentAt: new Date() } });
+  } else {
+    await WeeklyReport.updateOne({ _id: report._id }, { $set: { status: 'pending' }, $unset: { sentAt: 1 } });
+  }
   return result;
 }

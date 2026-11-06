@@ -27,6 +27,7 @@ const { default: gridService } = await import('../services/sendgridEmailService.
 const { notifyGrievanceCreated, notifyGrievanceStatusChanged } = await import('../services/grievanceNotifications.js');
 const { summaryWeek, buildWeeklyFeedbackSummary, sendWeeklyFeedbackSummary, mailIsConfigured } = await import('../services/weeklyFeedbackSummary.js');
 const { default: WeeklySummaryDelivery } = await import('../models/WeeklySummaryDelivery.js');
+const { default: WeeklyReport } = await import('../models/WeeklyReport.js');
 let database, server, base, employee, other, finance, admin, supervisor, executive;
 
 before(async () => {
@@ -331,7 +332,7 @@ for (const [role, getUser] of Object.entries(roleUsers)) {
     const user = getUser();
     await User.updateOne({ _id: user._id }, { $set: { grievanceAccess: 'summary' } });
     try {
-      const foreign = await feedback(other);
+      const foreign = await feedback(other, { attachments: [{ fileId: 'private-summary-test', storageKey: 'private-summary-test.pdf', name: 'private.pdf', mime: 'application/pdf', size: 7, privateStorage: true }] });
       const response = await request('/api/feedback/summary', { user });
       assert.equal(response.status, 200);
       const summary = await response.json();
@@ -340,6 +341,9 @@ for (const [role, getUser] of Object.entries(roleUsers)) {
       assert.ok(!payload.includes('Private feedback subject'));
       assert.ok(!payload.includes(other.email));
       assert.equal((await request(`/api/feedback/${foreign.grievanceId}`, { user })).status, 404);
+      assert.equal((await request(`/api/feedback/${foreign.grievanceId}/attachments/private-summary-test`, { user })).status, 404);
+      const owned = await feedback(user);
+      assert.equal((await request(`/api/feedback/${owned.grievanceId}`, { user })).status, 200);
       assert.equal((await request('/api/feedback?scope=all', { user })).status, 403);
       assert.equal((await request(`/api/feedback/${foreign.grievanceId}/status`, { user, method: 'PATCH', body: { status: 'closed', note: 'Not permitted' } })).status, 403);
     } finally { await User.updateOne({ _id: user._id }, { $set: { grievanceAccess: null } }); }
@@ -471,6 +475,10 @@ test('weekly emails are opt-in, sent only to active authorized viewers, and dedu
     const first = await sendWeeklyFeedbackSummary(options);
     assert.equal(first.sent, 2);
     assert.deepEqual(messages.map(message => message.to).sort(), [admin.email, executive.email].sort());
+    const summaryMessage = messages.find(message => message.to === executive.email);
+    assert.ok(summaryMessage.text.includes('Counts only'));
+    assert.ok(!JSON.stringify(summaryMessage).includes('Private feedback subject'));
+    assert.ok(!JSON.stringify(summaryMessage).includes('feedback_'));
     const second = await sendWeeklyFeedbackSummary(options);
     assert.equal(second.sent, 0);
     assert.equal(second.skipped, 2);
@@ -527,4 +535,146 @@ test('changes made after one report are included in the next report without gaps
     if (previous) process.env.WEEKLY_SUMMARY_ENABLED = previous;
     else delete process.env.WEEKLY_SUMMARY_ENABLED;
   }
+});
+
+async function withWeeklyReviewer(run) {
+  const previousEnabled = process.env.WEEKLY_SUMMARY_ENABLED;
+  const previousRecipients = process.env.WEEKLY_SUMMARY_RECIPIENTS;
+  const reviewer = await User.findById(admin._id);
+  process.env.WEEKLY_SUMMARY_ENABLED = 'true';
+  process.env.WEEKLY_SUMMARY_RECIPIENTS = admin.email;
+  await User.updateOne({ _id: admin._id }, { $set: { grievanceAccess: 'handler' } });
+  try {
+    await run();
+  } finally {
+    await User.updateOne({ _id: admin._id }, { $set: { grievanceAccess: reviewer.grievanceAccess } });
+    if (previousEnabled === undefined) delete process.env.WEEKLY_SUMMARY_ENABLED;
+    else process.env.WEEKLY_SUMMARY_ENABLED = previousEnabled;
+    if (previousRecipients === undefined) delete process.env.WEEKLY_SUMMARY_RECIPIENTS;
+    else process.env.WEEKLY_SUMMARY_RECIPIENTS = previousRecipients;
+  }
+}
+
+test('unfinished deliveries keep reports pending and can recover incorrect sent metadata', async () => {
+  await withWeeklyReviewer(async () => {
+    const now = new Date('2030-01-11T12:30:00Z');
+    const week = summaryWeek(now).start;
+    await WeeklyReport.create({ week, periodStart: week, periodEnd: now, status: 'sent', sentAt: now });
+    await WeeklySummaryDelivery.create({ week, userId: admin._id, status: 'sending' });
+    let sentMessages = 0;
+    const options = { now, dryRun: false, send: async () => { sentMessages++; } };
+    const busy = await sendWeeklyFeedbackSummary(options);
+    assert.equal(busy.pending, 1);
+    assert.equal(busy.skipped, 1);
+    assert.equal(sentMessages, 0);
+    const pending = await WeeklyReport.findOne({ week });
+    assert.equal(pending.status, 'pending');
+    assert.equal(pending.sentAt, undefined);
+    await WeeklySummaryDelivery.updateOne({ week, userId: admin._id }, { $set: { status: 'failed' } });
+    const retry = await sendWeeklyFeedbackSummary(options);
+    assert.equal(retry.sent, 1);
+    assert.equal(retry.pending, 0);
+    assert.equal((await WeeklyReport.findOne({ week })).status, 'sent');
+    await sendWeeklyFeedbackSummary(options);
+    assert.equal(sentMessages, 1);
+  });
+});
+
+test('overlapping summary runs never complete an in-flight report or send twice', async () => {
+  await withWeeklyReviewer(async () => {
+    const now = new Date('2030-01-18T12:30:00Z');
+    const week = summaryWeek(now).start;
+    let releaseSend;
+    let notifySending;
+    const sending = new Promise(resolve => { notifySending = resolve; });
+    const released = new Promise(resolve => { releaseSend = resolve; });
+    let sentMessages = 0;
+    const first = sendWeeklyFeedbackSummary({ now, dryRun: false, send: async () => {
+      sentMessages++;
+      notifySending();
+      await released;
+    } });
+    try {
+      await Promise.race([sending, first.then(() => { throw new Error('First report did not enter delivery'); })]);
+      const second = await sendWeeklyFeedbackSummary({ now, dryRun: false, send: async () => { sentMessages++; } });
+      assert.equal(second.pending, 1);
+      assert.equal((await WeeklyReport.findOne({ week })).status, 'pending');
+    } finally {
+      releaseSend();
+      await first;
+    }
+    assert.equal(sentMessages, 1);
+    assert.equal((await WeeklyReport.findOne({ week })).status, 'sent');
+  });
+});
+
+test('ambiguous stale deliveries are not automatically resent', async () => {
+  await withWeeklyReviewer(async () => {
+    const now = new Date('2030-01-25T12:30:00Z');
+    const week = summaryWeek(now).start;
+    await WeeklyReport.create({ week, periodStart: week, periodEnd: now, status: 'pending' });
+    await WeeklySummaryDelivery.collection.insertOne({ week, userId: admin._id, status: 'sending', updatedAt: new Date(Date.now() - 3600000) });
+    const result = await sendWeeklyFeedbackSummary({ now, dryRun: false, send: async () => { assert.fail('Ambiguous delivery must be checked before retrying'); } });
+    assert.equal(result.pending, 1);
+    assert.equal(result.sent, 0);
+    assert.equal((await WeeklyReport.findOne({ week })).status, 'pending');
+  });
+});
+
+test('a database error after provider acceptance does not make a delivery retryable', async () => {
+  await withWeeklyReviewer(async () => {
+    const now = new Date('2030-02-08T12:30:00Z');
+    const week = summaryWeek(now).start;
+    const originalUpdate = WeeklySummaryDelivery.updateOne;
+    let sentMessages = 0;
+    const options = { now, dryRun: false, send: async () => { sentMessages++; } };
+    WeeklySummaryDelivery.updateOne = function(filter, update, ...options) {
+      if (update.$set?.status === 'sent') throw new Error('Simulated confirmation database outage');
+      return originalUpdate.call(this, filter, update, ...options);
+    };
+    try {
+      await assert.rejects(sendWeeklyFeedbackSummary(options), /confirmation database outage/);
+    } finally {
+      WeeklySummaryDelivery.updateOne = originalUpdate;
+    }
+    assert.equal((await WeeklySummaryDelivery.findOne({ week, userId: admin._id })).status, 'sending');
+    const retry = await sendWeeklyFeedbackSummary(options);
+    assert.equal(retry.pending, 1);
+    assert.equal(sentMessages, 1);
+  });
+});
+
+test('reports with no eligible recipients do not advance the completed cutoff', async () => {
+  await withWeeklyReviewer(async () => {
+    process.env.WEEKLY_SUMMARY_RECIPIENTS = 'nobody@example.test';
+    const now = new Date('2030-02-01T12:30:00Z');
+    const week = summaryWeek(now).start;
+    const result = await sendWeeklyFeedbackSummary({ now, dryRun: false, send: async () => { assert.fail('No recipient should be emailed'); } });
+    assert.equal(result.recipients, 0);
+    assert.equal((await WeeklyReport.findOne({ week })).status, 'pending');
+  });
+});
+
+test('adjacent reporting windows count boundary submissions and progress exactly once', async () => {
+  const start = new Date('2030-02-04T00:00:00Z');
+  const boundary = new Date('2030-02-05T00:00:00Z');
+  const end = new Date('2030-02-06T00:00:00Z');
+  await feedback(employee, { subject: 'Before boundary submission', createdAt: start });
+  await feedback(employee, {
+    subject: 'At boundary submission', createdAt: boundary, status: 'resolved', resolvedAt: boundary,
+    statusHistory: [
+      { status: 'submitted', changedBy: employee._id, changedAt: start },
+      { status: 'resolved', changedBy: admin._id, changedAt: boundary }
+    ]
+  });
+  const first = await buildWeeklyFeedbackSummary(boundary, { start, end: boundary });
+  const second = await buildWeeklyFeedbackSummary(end, { start: boundary, end });
+  assert.equal(first.received, 1);
+  assert.equal(second.received, 1);
+  assert.equal(first.resolved, 0);
+  assert.equal(second.resolved, 1);
+  assert.ok(!first.text.includes('At boundary submission'));
+  assert.ok(second.text.includes('At boundary submission'));
+  assert.ok(!first.text.includes('Submitted → Resolved'));
+  assert.ok(second.text.includes('Submitted → Resolved'));
 });

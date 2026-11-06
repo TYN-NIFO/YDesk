@@ -9,5 +9,5 @@ await mongoose.connect(process.env.MONGODB_URI);
 try {
   const result = await sendWeeklyFeedbackSummary({ dryRun });
   console.log(JSON.stringify(result));
-  if (result.failed > 0) process.exitCode = 1;
+  if (result.failed > 0 || result.pending > 0) process.exitCode = 1;
 } finally { await mongoose.disconnect(); }

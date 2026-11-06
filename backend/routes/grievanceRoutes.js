@@ -56,13 +56,13 @@ router.get('/', listGrievances);
 // POST /api/grievances - Raise a grievance (multipart, up to 3 files)
 router.post('/', uploadAttachments, createGrievance);
 
-// GET /api/grievances/:grievanceId - Owner, handler, or summary access
+// GET /api/grievances/:grievanceId - Owner or handler
 router.get('/:grievanceId', getGrievance);
 
 // PATCH /api/grievances/:grievanceId/status - Handlers only
 router.patch('/:grievanceId/status', updateGrievanceStatus);
 
-// GET /api/grievances/:grievanceId/attachments/:fileId - Owner, handler, or summary access
+// GET /api/grievances/:grievanceId/attachments/:fileId - Owner or handler
 router.get('/:grievanceId/attachments/:fileId', downloadGrievanceAttachment);
 
 export default router;

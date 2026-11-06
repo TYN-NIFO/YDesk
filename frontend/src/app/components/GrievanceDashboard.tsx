@@ -138,7 +138,7 @@ export default function GrievanceDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {tab === 'summary' && access ? (
-          <GrievanceSummary onOpen={setOpenId} />
+          <GrievanceSummary onOpen={access === 'handler' ? setOpenId : undefined} />
         ) : (
           <GrievanceList
             scope={tab === 'all' && access === 'handler' ? 'all' : 'mine'}
@@ -223,7 +223,7 @@ function GrievanceForm({ categories, onClose }: { categories: string[]; onClose:
         </FormSection>
         <div className="ui-form-actions"><button type="button" onClick={onClose} disabled={isLoading} className="ui-button ui-button-secondary">Cancel</button><button type="submit" disabled={isLoading} className="ui-button ui-button-primary"><ShieldCheck size={16} />{isLoading ? 'Submitting feedback…' : 'Submit feedback'}</button></div>
       </div>
-      <aside className="ui-summary"><h2 className="ui-summary-heading">Every idea matters</h2><div className="ui-summary-help"><ShieldCheck className="text-blue-700 mb-4" size={26} /><h3>Who can see your feedback?</h3><p>You and the designated feedback reviewers can read the details and attachments. Leadership summary access sees aggregate counts, and can open an individual item's details and progress when needed.</p><h3 className="mt-5">This is a named report</h3><p>Your name is shared with the designated feedback reviewers so they can follow up with you.</p><h3 className="mt-5">Stay informed</h3><p>Follow the status and response history in My feedback after submitting.</p></div></aside>
+      <aside className="ui-summary"><h2 className="ui-summary-heading">Every idea matters</h2><div className="ui-summary-help"><ShieldCheck className="text-blue-700 mb-4" size={26} /><h3>Who can see your feedback?</h3><p>You and the designated feedback reviewers can read the details and attachments. Leadership summary access shows counts and status summaries without your subject, description, or attachments.</p><h3 className="mt-5">This is a named report</h3><p>Your name is shared with the designated feedback reviewers so they can follow up with you.</p><h3 className="mt-5">Stay informed</h3><p>Follow the status and response history in My feedback after submitting.</p></div></aside>
     </form>
   </div>;
 }
@@ -441,7 +441,7 @@ function GrievanceDetail({ grievanceId, isHandler, transitions, currentUserId, o
                 {options.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
             </Field>
-            <Field label="Note to the employee" htmlFor="grv-note" required={needsNote} hint="The employee is emailed this note with the new status.">
+            <Field label="Note to the employee" htmlFor="grv-note" required={needsNote} hint="The employee can read this note in the portal. Their email includes the new status and a link.">
               <textarea id="grv-note" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} className="ui-control" placeholder={needsNote ? 'Explain the outcome' : 'Optional'} />
             </Field>
             <div className="flex justify-end">
@@ -459,7 +459,7 @@ function GrievanceDetail({ grievanceId, isHandler, transitions, currentUserId, o
   );
 }
 
-function GrievanceSummary({ onOpen }: { onOpen: (id: string) => void }) {
+function GrievanceSummary({ onOpen }: { onOpen?: (id: string) => void }) {
   const { data, isLoading, error } = useGetGrievanceSummaryQuery(undefined);
   if (isLoading) return <div className="p-8"><LoadingSpinner text="Loading summary…" /></div>;
   if (error || !data) return <div className="card p-8 text-center text-red-600">{errorMessage(error, 'Failed to load summary')}</div>;
@@ -520,9 +520,9 @@ function GrievanceSummary({ onOpen }: { onOpen: (id: string) => void }) {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {data.open.map((g: any) => (
-                    <tr key={g.grievanceId} onClick={() => onOpen(g.grievanceId)} className="hover:bg-gray-50 cursor-pointer">
+                    <tr key={g.grievanceId}>
                       <td className="ui-table-td px-4 py-2 font-mono text-xs whitespace-nowrap">
-                        <button onClick={(e) => { e.stopPropagation(); onOpen(g.grievanceId); }} className="text-blue-600 hover:underline">{g.grievanceId}</button>
+                        {onOpen ? <button onClick={() => onOpen(g.grievanceId)} className="text-blue-600 hover:underline">{g.grievanceId}</button> : g.grievanceId}
                       </td>
                       <td className="ui-table-td px-4 py-2 whitespace-nowrap">{g.category}</td>
                       <td className="ui-table-td px-4 py-2"><StatusBadge status={g.status} /></td>
@@ -535,7 +535,7 @@ function GrievanceSummary({ onOpen }: { onOpen: (id: string) => void }) {
           )}
         </div>
       </div>
-      <p className="text-xs text-gray-500">Click an ID to see its full details and progress.</p>
+      <p className="text-xs text-gray-500">{onOpen ? 'Open a feedback reference to see its details and progress.' : 'Summary access shows counts and status summaries. Private details are available to the feedback owner and designated reviewers.'}</p>
     </div>
   );
 }
