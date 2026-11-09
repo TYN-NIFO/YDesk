@@ -2,26 +2,33 @@
 
 ## Feedback notifications and weekly summaries
 
-The feedback portal sends submission receipts and status updates through SendGrid or SMTP. Email tests stub both providers and send no real messages. Weekly reports for handlers include counts, new feedback subjects grouped by category, and status changes. Reports for summary viewers contain aggregate counts only. Names, descriptions, reviewer notes, and attachments are excluded from weekly reports.
+The feedback portal sends submission receipts and status updates through Resend, with legacy SendGrid/SMTP support. Automated email tests stub providers and send no real messages. Weekly reports for handlers include counts, new feedback subjects grouped by category, and status changes. Reports for summary viewers contain aggregate counts only. Names, descriptions, reviewer notes, and attachments are excluded from weekly reports.
 
 Weekly automation is implemented in `.github/workflows/weekly-feedback-summary.yml`, scheduled for Fridays at 18:00 Asia/Kolkata (12:30 UTC), with retry runs at 18:30 and 19:00. It is disabled unless the repository variable `WEEKLY_SUMMARY_ENABLED` equals `true`. Successful recipients are skipped during retries. No schedule or mail delivery was activated during local development.
 
-To enable after deployment, configure repository secrets `MONGODB_URI`, `SENDGRID_API_KEY`, and `EMAIL_FROM`, plus repository variable `FRONTEND_URL` pointing to the deployed frontend. The database URI is read from the scheduler's own secrets; it does not inherit the API host's configuration. Confirm the SendGrid sender is verified before enabling. SMTP is also supported by the CLI when its host/user/password/from settings are configured, but the supplied GitHub workflow uses SendGrid.
+The GitHub workflow uses Resend over HTTPS. Configure repository secrets `MONGODB_URI`, `RESEND_API_KEY`, and `EMAIL_FROM`, plus repository variable `FRONTEND_URL` pointing to the deployed frontend. Optional variable `RESEND_FROM` overrides `EMAIL_FROM`. The sender must belong to a domain verified in Resend, and a Sending access key is sufficient. The job explicitly ignores the old SendGrid key. It reads its own GitHub secrets and does not inherit Render's environment.
+
+For the Render API, set `RESEND_API_KEY`, `EMAIL_FROM` (or `RESEND_FROM`), and `FRONTEND_URL` in the service environment, then deploy. Resend takes priority over legacy SendGrid/SMTP configuration for password reset emails, password reset confirmations, and feedback notifications. Authentication or sender errors do not fall back to another provider. Never put the API key in frontend variables, code, logs, or chat.
+
+The `/api/health` response reports the selected email provider and whether its required settings are present. It never exposes API keys. Configuration presence does not verify provider acceptance or inbox delivery.
+
+Render Free blocks outbound SMTP on ports 25, 465, and 587. Resend uses HTTPS and avoids those SMTP restrictions. Weekly sends include an idempotency key in addition to MongoDB delivery tracking. A manual dry run generates the report without submitting an email to Resend; it does not prove that the key or sender domain is valid or that a recipient inbox will accept a message.
 
 Recipients must be active accounts with explicit `grievanceAccess: handler` or `summary`; a person's application role alone does not subscribe them. Optional `WEEKLY_SUMMARY_RECIPIENTS` restricts this eligible list to specified comma-separated emails. Set reviewer access using the existing access-management script. Leadership recipients receive counts only, with a link to `/feedback`.
 
-Run `npm run weekly-summary` from `backend` for a dry run against the explicitly configured database. It prints the reporting week and delivery counts without email addresses or feedback content. Actual sending requires both `WEEKLY_SUMMARY_ENABLED=true` and `node scripts/weekly-feedback-summary.js --send`. A manual GitHub workflow run defaults to dry-run mode, but still requires the repository enable variable. The first reporting period starts at Monday 00:00 IST and ends at the first send attempt. Later periods start at the previous completed report's cutoff, including intervening weekend changes. Each window includes its start and excludes its end to prevent duplicates at the boundary. Retries retain the original cutoff. The open count and displayed item statuses reflect the current database state.
+Run `npm run weekly-summary` from `backend` for a dry run against the explicitly configured database. It prints the reporting week and delivery counts without email addresses or feedback content. Actual sending requires both `WEEKLY_SUMMARY_ENABLED=true` and `node scripts/weekly-feedback-summary.js --send`. A manual GitHub workflow run defaults to dry-run mode and can run while scheduled sending is disabled. Keep the manual Send real emails input off during validation. The first reporting period starts at Monday 00:00 IST and ends at the first send attempt. Later periods start at the previous completed report's cutoff, including intervening weekend changes. Each window includes its start and excludes its end to prevent duplicates at the boundary. Retries retain the original cutoff. The open count and displayed item statuses reflect the current database state.
 
 Successful deliveries are recorded per recipient and reporting week to prevent duplicate sends. A report is complete only when every eligible recipient has a confirmed `sent` delivery; no-recipient reports remain pending. Failed deliveries can be retried, including deliveries belonging to a report previously marked complete incorrectly; successful ones are skipped. The CLI exits unsuccessfully while recipients remain pending so monitoring can detect incomplete delivery. If a process stops while a delivery is marked `sending`, inspect provider delivery logs before resetting that entry to `failed`, since the email may already have been accepted. These ambiguous deliveries are never retried automatically, even after a timeout.
 
 Local preview runs deliberately skip production environment files and do not configure mail. Checking that an API key exists does not verify sender authorization or inbox delivery. Use a designated test recipient for a separate delivery check before enabling production automation.
 
 ## Overview
-The application supports two email providers:
-1. **SendGrid API** (Recommended for production - more reliable on cloud platforms)
-2. **SMTP/Gmail** (For development or if you prefer traditional SMTP)
+The application supports three email providers:
+1. **Resend API** (preferred when `RESEND_API_KEY` is configured)
+2. **SendGrid API** (legacy fallback when no Resend key is configured)
+3. **SMTP/Gmail** (fallback when neither API key is configured and the host permits SMTP)
 
-The system automatically selects SendGrid if `SENDGRID_API_KEY` is configured, otherwise falls back to SMTP.
+Provider selection is Resend, then SendGrid, then SMTP. The sections below describe legacy provider setup; the production weekly workflow uses Resend.
 
 ---
 
@@ -85,7 +92,7 @@ FRONTEND_URL=http://localhost:3000
 
 ---
 
-## Option 2: SMTP/Gmail Setup (Development Only)
+## Option 2: SMTP/Gmail Setup
 
 ### Setup Steps:
 

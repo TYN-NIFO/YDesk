@@ -8,20 +8,8 @@ import multer from 'multer';
 import storageService from '../services/storage.js';
 import RefreshToken from '../models/RefreshToken.js';
 import AuditLog from '../models/AuditLog.js';
-import emailService from '../services/emailService.js';
-import sendgridEmailService from '../services/sendgridEmailService.js';
+import { getEmailService } from '../services/mailService.js';
 import { revokeSessions } from '../services/sessionService.js';
-
-// Determine which email service to use
-const getEmailService = () => {
-  // Prefer SendGrid if API key is configured (more reliable in cloud environments)
-  if (process.env.SENDGRID_API_KEY) {
-    console.log('📧 Using SendGrid Email Service');
-    return sendgridEmailService;
-  }
-  console.log('📧 Using SMTP Email Service');
-  return emailService;
-};
 
 // Token configuration
 const TOKEN_CONFIG = {

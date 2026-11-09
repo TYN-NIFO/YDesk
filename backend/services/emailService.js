@@ -10,9 +10,8 @@ class EmailService {
   }
 
   initializeTransporter() {
-    // Skip SMTP initialization if SendGrid is configured
-    if (process.env.SENDGRID_API_KEY) {
-      console.log('📧 Skipping SMTP initialization - SendGrid is configured');
+    if (process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY) {
+      console.log('📧 Skipping SMTP initialization - an HTTPS email provider is configured');
       return;
     }
 

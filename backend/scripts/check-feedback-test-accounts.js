@@ -40,7 +40,7 @@ assert.ok(profiles.length, 'No test profiles found');
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex');
 process.env.RATE_LIMIT_MAX_REQUESTS = '2000';
-for (const key of ['MONGODB_URI', 'SENDGRID_API_KEY', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'EMAIL_FROM', 'WEEKLY_SUMMARY_RECIPIENTS']) {
+for (const key of ['MONGODB_URI', 'RESEND_API_KEY', 'RESEND_FROM', 'SENDGRID_API_KEY', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'EMAIL_FROM', 'WEEKLY_SUMMARY_RECIPIENTS']) {
   delete process.env[key];
 }
 const { app } = await import('../server.js');

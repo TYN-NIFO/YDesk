@@ -2,8 +2,9 @@ import Grievance, { GRIEVANCE_CATEGORIES } from '../models/Grievance.js';
 import User from '../models/User.js';
 import WeeklySummaryDelivery from '../models/WeeklySummaryDelivery.js';
 import WeeklyReport from '../models/WeeklyReport.js';
-import emailService from './emailService.js';
-import sendgridEmailService from './sendgridEmailService.js';
+import { getEmailService, mailIsConfigured } from './mailService.js';
+
+export { mailIsConfigured } from './mailService.js';
 
 const indiaOffset = 330 * 60000;
 const templateVersion = 'v2';
@@ -35,11 +36,6 @@ async function resolveReport(now, persist) {
     { $setOnInsert: { periodStart, periodEnd: now, status: 'pending' } },
     { upsert: true, new: true }
   ).lean();
-}
-
-export function mailIsConfigured() {
-  return Boolean(process.env.SENDGRID_API_KEY && (process.env.SMTP_FROM || process.env.EMAIL_FROM)) ||
-    Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM);
 }
 
 const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
@@ -129,7 +125,7 @@ export async function buildWeeklyFeedbackSummary(now = new Date(), period = summ
 export async function sendWeeklyFeedbackSummary({ now = new Date(), dryRun = true, send } = {}) {
   if (!dryRun) {
     if (process.env.WEEKLY_SUMMARY_ENABLED !== 'true') throw new Error('Set WEEKLY_SUMMARY_ENABLED=true before sending summaries');
-    if (!send && !mailIsConfigured()) throw new Error('Configure SendGrid or SMTP before sending summaries');
+    if (!send && !mailIsConfigured()) throw new Error('Configure Resend, SendGrid, or SMTP before sending summaries');
   }
   const report = await resolveReport(now, !dryRun);
   const summary = await buildWeeklyFeedbackSummary(now, { start: report.periodStart, end: report.periodEnd });
@@ -139,7 +135,7 @@ export async function sendWeeklyFeedbackSummary({ now = new Date(), dryRun = tru
   const result = { week: report.week.toISOString(), recipients: eligible.length, sent: 0, skipped: 0, failed: 0, pending: 0, dryRun };
   if (dryRun) return result;
   let aggregateSummary;
-  const deliver = send || (message => (process.env.SENDGRID_API_KEY ? sendgridEmailService : emailService).sendEmail(message));
+  const deliver = send || (message => getEmailService().sendEmail(message));
   await WeeklySummaryDelivery.init();
   for (const user of eligible) {
     let delivery;
@@ -162,7 +158,7 @@ export async function sendWeeklyFeedbackSummary({ now = new Date(), dryRun = tru
         aggregateSummary ||= await buildWeeklyFeedbackSummary(now, { start: report.periodStart, end: report.periodEnd }, { includeDetails: false });
       }
       const message = user.grievanceAccess === 'summary' ? aggregateSummary : summary;
-      await deliver({ to: user.email, subject: message.subject, html: message.html, text: message.text });
+      await deliver({ to: user.email, subject: message.subject, html: message.html, text: message.text, idempotencyKey: `weekly-feedback/${report.week.toISOString()}/${user._id}` });
     } catch (error) {
       await WeeklySummaryDelivery.updateOne({ _id: delivery._id }, { $set: { status: 'failed', error: 'Email delivery failed' } });
       result.failed++;
