@@ -6,7 +6,7 @@ The portal is available at `/feedback`; `/grievances` redirects there and the le
 
 All five app roles can submit and see their own feedback. Explicit handler access permits review of other people's submissions; handlers cannot act on their own. Explicit summary access permits aggregate reports, not other people's details or attachments. Roles alone do not grant portal-wide access. The disposable local preview assigns handler access to admin/finance and summary access to executives so each view can be tested; employee and supervisor accounts see only their own submissions.
 
-Weekly email automation is implemented but opt-in and disabled by default. Reports run on Fridays at 18:00 Asia/Kolkata, with retry runs at 18:30 and 19:00. See `backend/EMAIL_SETUP.md` for recipient permissions, reporting windows, dry-run commands, and deployment requirements.
+Weekly email automation uses Resend's HTTPS API from GitHub Actions and is opt-in and disabled by default. Reports run on Fridays at 18:00 Asia/Kolkata, with retry runs at 18:30 and 19:00. Password recovery and feedback notifications also use Resend when its key is configured. See `backend/EMAIL_SETUP.md` for sender setup, recipient permissions, reporting windows, dry-run commands, and deployment requirements.
 
 ## Local verification and preview
 

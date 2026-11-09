@@ -19,6 +19,7 @@ import userRoutes from './routes/userRoutes.js';
 import leaveRoutes from './routes/leaveRoutes.js';
 import holidayRoutes from './routes/holidayRoutes.js';
 import grievanceRoutes from './routes/grievanceRoutes.js';
+import { getEmailService, mailIsConfigured } from './services/mailService.js';
 
 // Import Swagger
 import swaggerUi from 'swagger-ui-express';
@@ -219,7 +220,8 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    email: { provider: getEmailService().constructor.name, configured: mailIsConfigured() }
   });
 });
 

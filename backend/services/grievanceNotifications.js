@@ -1,6 +1,5 @@
 import User from '../models/User.js';
-import emailService from './emailService.js';
-import sendgridEmailService from './sendgridEmailService.js';
+import { getEmailService } from './mailService.js';
 
 // Grievance emails carry only the ID, category, subject and status. The
 // description and attachments stay in YDesk, behind sign-in.
@@ -18,8 +17,6 @@ const escapeHtml = (value = '') =>
   }[ch]));
 
 const grievancesUrl = () => `${process.env.FRONTEND_URL || ''}/feedback`;
-
-const getEmailService = () => (process.env.SENDGRID_API_KEY ? sendgridEmailService : emailService);
 
 function renderEmail(heading, rows, footer) {
   const tableRows = rows

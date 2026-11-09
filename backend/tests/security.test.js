@@ -9,6 +9,8 @@ process.env.JWT_SECRET = 'isolated-tests-only-secret-not-for-deployment';
 process.env.AWS_S3_BUCKET_NAME = 'test-receipts';
 process.env.AWS_REGION = 'us-east-1';
 process.env.RATE_LIMIT_MAX_REQUESTS = '2000';
+delete process.env.RESEND_API_KEY;
+delete process.env.RESEND_FROM;
 
 const { app } = await import('../server.js');
 const { generateAccessToken } = await import('../controllers/authController.js');
@@ -24,6 +26,7 @@ const { validateAgainstPolicy } = await import('../services/policyValidation.js'
 const { validCategories } = await import('../lib/categoryMaster.js');
 const { default: smtpService } = await import('../services/emailService.js');
 const { default: gridService } = await import('../services/sendgridEmailService.js');
+const { default: resendService } = await import('../services/resendEmailService.js');
 const { notifyGrievanceCreated, notifyGrievanceStatusChanged } = await import('../services/grievanceNotifications.js');
 const { summaryWeek, buildWeeklyFeedbackSummary, sendWeeklyFeedbackSummary, mailIsConfigured } = await import('../services/weeklyFeedbackSummary.js');
 const { default: WeeklySummaryDelivery } = await import('../models/WeeklySummaryDelivery.js');
@@ -374,21 +377,25 @@ test('legacy records and API links remain accessible without a data migration', 
   assert.equal((await request(`/api/feedback/${legacy.grievanceId}/status`, { user: admin, method: 'PATCH', body: { status: 'resolved', note: 'Review legacy feedback' } })).status, 200);
 });
 
-test('SMTP and SendGrid notifications use feedback wording and exclude private content', async () => {
+test('SMTP, SendGrid, and Resend notifications exclude private content', async () => {
   const savedKey = process.env.SENDGRID_API_KEY;
+  const savedResendKey = process.env.RESEND_API_KEY;
   const smtp = smtpService.sendEmail;
   const grid = gridService.sendEmail;
+  const resend = resendService.sendEmail;
   const messages = [];
-  smtpService.sendEmail = gridService.sendEmail = async message => { messages.push(message); return { success: true }; };
+  smtpService.sendEmail = gridService.sendEmail = resendService.sendEmail = async message => { messages.push(message); return { success: true }; };
   try {
     const record = await feedback(employee);
-    for (const useGrid of [false, true]) {
-      if (useGrid) process.env.SENDGRID_API_KEY = 'mock-key-no-network';
+    for (const provider of ['smtp', 'sendgrid', 'resend']) {
+      delete process.env.RESEND_API_KEY;
+      if (provider === 'resend') process.env.RESEND_API_KEY = 're_mock_no_network';
+      if (provider === 'sendgrid') process.env.SENDGRID_API_KEY = 'mock-key-no-network';
       else delete process.env.SENDGRID_API_KEY;
       await notifyGrievanceCreated(record, employee);
       await notifyGrievanceStatusChanged(record, employee, 'PRIVATE_NOTE_DO_NOT_EMAIL');
     }
-    assert.equal(messages.length, 6);
+    assert.equal(messages.length, 9);
     for (const message of messages) {
       assert.ok(/feedback/i.test(message.subject));
       assert.ok(!JSON.stringify(message).includes('PRIVATE_DESCRIPTION_DO_NOT_EMAIL'));
@@ -398,6 +405,9 @@ test('SMTP and SendGrid notifications use feedback wording and exclude private c
   } finally {
     smtpService.sendEmail = smtp;
     gridService.sendEmail = grid;
+    resendService.sendEmail = resend;
+    if (savedResendKey) process.env.RESEND_API_KEY = savedResendKey;
+    else delete process.env.RESEND_API_KEY;
     if (savedKey) process.env.SENDGRID_API_KEY = savedKey;
     else delete process.env.SENDGRID_API_KEY;
   }
