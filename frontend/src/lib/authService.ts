@@ -51,6 +51,19 @@ class AuthService {
     }
   }
 
+  // Complete the browser-bound Google sign-in using the normal YDesk session.
+  async completeGoogleLogin(code: string, verifier: string) {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/google/exchange`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, verifier }), signal: AbortSignal.timeout(20000),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Google sign-in could not complete. Please start again.');
+    store.dispatch(setTokens({ user: data.user, accessToken: data.accessToken, message: data.message }));
+    this.setupAutoRefresh();
+    return data;
+  }
+
   // Refresh access token with race condition protection
   async refreshToken(): Promise<string | null> {
     // Prevent multiple simultaneous refresh requests

@@ -15,9 +15,14 @@ import {
 } from "../controllers/authController.js";
 import { auth } from "../middleware/auth.js";
 import { requireAdmin } from "../middleware/rbac.js";
+import { googleLoginStatus, startGoogleLogin, finishGoogleLogin, exchangeGoogleLogin } from '../controllers/googleLoginController.js';
 
 // Use cookie parser for refresh tokens
 router.use(cookieParser());
+router.get('/google/config', googleLoginStatus);
+router.get('/google/start', startGoogleLogin);
+router.get('/google/callback', finishGoogleLogin);
+router.post('/google/exchange', exchangeGoogleLogin);
 
 // Authentication endpoints - Token-based authentication
 

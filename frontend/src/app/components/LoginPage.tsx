@@ -7,6 +7,7 @@ import { useSelector } from 'react-redux';
 import { ArrowRight, Eye, EyeOff, FileText, CalendarDays, ShieldCheck, Loader2 } from 'lucide-react';
 import { RootState } from '@/lib/store';
 import authService from '@/lib/authService';
+import { beginGoogleSignIn } from '@/lib/googleSignIn';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,9 +17,23 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
   const destination = (role: string) => role === 'admin' ? '/admin' : role === 'executive' ? '/executive' : role === 'finance_manager' ? '/finance' : '/employee';
 
   useEffect(() => { if (isAuthenticated && user) router.replace(destination(user.role)); }, [isAuthenticated, user, router]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/google/config`, { signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(result => { if (!controller.signal.aborted) setGoogleEnabled(result?.enabled === true); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  const googleSignIn = async () => {
+    setBusy(true); setError('');
+    try { await beginGoogleSignIn(); }
+    catch { setError('Google sign-in could not start. Please try again.'); setBusy(false); }
+  };
 
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -53,6 +68,13 @@ export default function LoginPage() {
           <p className="text-sm font-medium text-gray-500 mt-7 mb-2">Welcome to YDesk</p>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">Your workday, connected.</h2>
           <p className="text-gray-500 mt-4 mb-9 leading-relaxed">Sign in with your company account to get started.</p>
+          {googleEnabled && <div className="mb-6">
+            <button type="button" data-testid="google-sign-in" disabled={busy} onClick={googleSignIn} className="w-full min-h-[44px] flex items-center justify-center gap-3 rounded-md border border-gray-300 bg-white px-4 py-3 font-medium text-gray-800 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-60">
+              <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.03 46.98 31.87 46.98 24.55Z"/><path fill="#FBBC05" d="M10.53 28.59A14.41 14.41 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.87 23.87 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19Z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.17 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z"/></svg>
+              Continue with Google
+            </button>
+            <p className="mt-5 text-center text-sm text-gray-500">or use your YDesk password</p>
+          </div>}
           <form onSubmit={signIn} className="space-y-5">
             <div><label htmlFor="email" className="block text-sm font-semibold mb-2">Work email</label><input id="email" name="email" className="input" type="email" autoComplete="username" placeholder="you@company.com" required value={email} onChange={event => { setEmail(event.target.value); setError(''); }} disabled={busy} /></div>
             <div><div className="flex justify-between gap-3 mb-2"><label htmlFor="password" className="text-sm font-semibold">Password</label><Link href="/forgot-password" className="text-sm font-medium text-blue-600 hover:underline">Forgot password?</Link></div><div className="relative"><input id="password" name="password" className="input pr-12" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" required value={password} onChange={event => { setPassword(event.target.value); setError(''); }} disabled={busy} /><button type="button" className="absolute right-3 top-3 text-gray-500 p-1" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></div>
