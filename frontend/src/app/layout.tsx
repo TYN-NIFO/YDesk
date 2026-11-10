@@ -6,7 +6,8 @@ import TopNav from "./components/TopNav";
 
 export const metadata: Metadata = {
   title: "YDesk",
-  description: "Internal reimbursement system",
+  description: "Your team workspace for expenses, time off and feedback",
+  icons: { icon: "/icon.svg", shortcut: "/icon.svg" },
 };
 
 export default function RootLayout({

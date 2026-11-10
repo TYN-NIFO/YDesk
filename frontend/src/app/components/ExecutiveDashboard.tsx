@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHeading } from './ui/WorkspaceUI';
+
 import { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
@@ -152,48 +154,7 @@ export default function ExecutiveDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="ui-panel bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Building className="h-8 w-8 text-purple-600" />
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Executive Dashboard</h1>
-                  <p className="text-sm text-gray-600">Welcome back, {user.name} (CEO/CTO)</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowClaimForm(true)}
-                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Claim
-              </button>
-
-              <button
-                onClick={() => router.push('/submit-leave')}
-                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                Submit Leave
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="ui-button ui-button-secondary flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div className="ui-page !pb-0"><PageHeading title="Executive workspace" description="Review team requests and keep track of your own expenses." icon={Building} actions={<><button className="ui-button ui-button-primary" onClick={() => setShowClaimForm(true)}><Plus size={16} />New expense</button></>} /></div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -207,7 +168,7 @@ export default function ExecutiveDashboard() {
             {/* Tab Navigation */}
             <div className="mb-8">
               <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-8">
+                <nav className="-mb-px flex gap-6 overflow-x-auto whitespace-nowrap">
                   <button
                     onClick={() => setActiveTab('personal')}
                     className={`ui-tab ${`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'personal'

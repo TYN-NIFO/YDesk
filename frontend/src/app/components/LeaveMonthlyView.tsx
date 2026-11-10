@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGetLeavesQuery, useDeleteLeaveMutation } from '@/lib/api';
 import toast from 'react-hot-toast';
 import LeaveForm from './LeaveForm';
@@ -20,7 +20,9 @@ export default function LeaveMonthlyView({
   userId,
   isCurrentUser = true
 }: LeaveMonthlyViewProps) {
-  const { data, isLoading, error, refetch } = useGetLeavesQuery({ year, month });
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [year, month]);
+  const { data, isLoading, error, refetch } = useGetLeavesQuery({ year, month, page, limit: 20 });
   const [deleteLeave, { isLoading: isDeleting }] = useDeleteLeaveMutation();
   const [editingLeave, setEditingLeave] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
@@ -163,7 +165,7 @@ export default function LeaveMonthlyView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-900">{monthName} - Leave Summary</h2>
         {isCurrentUser && (
           <button
@@ -212,6 +214,7 @@ export default function LeaveMonthlyView({
         </div>
       )}
 
+      <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-sm text-gray-600">Page {page} ? {data?.pagination?.total || 0} requests</span><div className="flex gap-2"><button className="ui-button ui-button-secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</button><button className="ui-button ui-button-secondary" disabled={page >= (data?.pagination?.pages || 1)} onClick={() => setPage(page + 1)}>Next</button></div></div>
       {/* Detailed Table */}
       <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-md">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
@@ -245,7 +248,7 @@ export default function LeaveMonthlyView({
           <ul className="divide-y divide-gray-200">
             {leaves.map((leave: any) => (
               <li key={leave._id} className="px-6 py-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3 mb-2">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(leave.type)}`}>
@@ -256,7 +259,7 @@ export default function LeaveMonthlyView({
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-4 text-sm text-gray-900">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-900">
                       <span className="font-medium">
                         {formatDateRange(leave.startDate, leave.endDate)}
                       </span>

@@ -1,9 +1,10 @@
+import { roleConfig } from './roles';
 export const GOOGLE_VERIFIER_KEY = 'ydesk-google-login-verifier';
 export const GOOGLE_NEXT_KEY = 'ydesk-google-login-next';
 const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...Array.from(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 export function safeLoginDestination(path: string | null, role: string) {
-  const fallback = role === 'admin' ? '/admin' : role === 'executive' ? '/executive' : role === 'finance_manager' ? '/finance' : '/employee';
+  const fallback = roleConfig(role).home;
   if (!path || !path.startsWith('/') || path.startsWith('//') || path.includes('\\')) return fallback;
   try {
     const url = new URL(path, window.location.origin);

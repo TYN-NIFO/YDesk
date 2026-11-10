@@ -124,3 +124,63 @@ select.ui-control { padding-right: 32px; }
 }
 @media (max-width: 1000px) { .ui-form-layout { grid-template-columns: minmax(0, 1fr) 250px; gap: 18px; } .ui-section-content { padding: 20px; } }
 @media (max-width: 760px) { .ui-page { padding: 24px 18px 40px; } .ui-form-layout { grid-template-columns: 1fr; } .ui-summary { position: static; } .ui-page-heading { align-items: flex-start; flex-direction: column; gap: 18px; } .ui-heading-icon { width: 44px; height: 44px; } .ui-section-heading { padding: 18px; flex-wrap: wrap; } .ui-section-content { padding: 18px; } .ui-expense-item { padding: 16px; } .ui-form-actions { flex-wrap: wrap; } .ui-form-actions > button { flex: 1; } .ui-dialog-backdrop { padding: 12px; } .ui-dialog { max-height: calc(100dvh - 24px); } .ui-dialog-header, .ui-dialog-body { padding: 20px; } }
+
+/* Shared workspace rhythm and responsive controls. */
+.ui-page, .ui-panel, .ui-heading-title > div { min-width: 0; }
+.ui-control, .ui-field > label, .ui-label, .ui-button { font-size: 14px; }
+.ui-field-hint, .ui-field-error, .ui-table, .ui-empty p { font-size: 13px; }
+.ui-table-th { font-size: 12px; }
+.ui-kpi-label { white-space: normal; line-height: 1.4; }
+.ui-icon-button, .icon-button { min-width: 44px; min-height: 44px; }
+.ui-dialog-header { position: sticky; top: 0; z-index: 2; background: white; }
+.ui-heading-actions, .ui-form-actions { flex-wrap: wrap; }
+.ui-panel .overflow-x-auto { overscroll-behavior-x: contain; }
+.ui-table td { overflow-wrap: anywhere; }
+.leave-calendar { overflow: hidden; }
+.leave-calendar-heading, .leave-request-heading { padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.leave-calendar h3 { font-size: 20px; font-weight: 700; color: var(--ui-ink); }
+.leave-calendar-heading p, .leave-request-heading p { font-size: 13px; color: var(--ui-muted); margin-top: 4px; }
+.leave-calendar-navigation { display: flex; gap: 8px; }
+.leave-calendar-filters { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 24px 20px; }
+.leave-calendar-filters > select { width: auto; flex: 1; min-width: 145px; }
+.leave-calendar-search { flex: 3; min-width: 220px; position: relative; }
+.leave-calendar-search svg { position: absolute; top: 14px; left: 12px; color: var(--ui-muted); }
+.leave-calendar-search input { padding-left: 38px; }
+.leave-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--ui-line); border-block: 1px solid var(--ui-line); }
+.leave-weekday { padding: 12px 4px; text-align: center; font-size: 12px; font-weight: 600; color: var(--ui-muted); background: var(--ui-soft); }
+.leave-day { min-height: 136px; padding: 10px; text-align: left; background: white; display: flex; flex-direction: column; gap: 6px; min-width: 0; position: relative; }
+.leave-day:hover { background: #fffbed; }
+.leave-day.is-selected { background: #fff8d9; box-shadow: inset 0 0 0 2px #b38f00; }
+.leave-day:focus-visible { z-index: 1; outline-offset: -3px; }
+.leave-day-number { font-size: 13px; font-weight: 600; width: 27px; height: 27px; display: grid; place-items: center; }
+.leave-day.is-today .leave-day-number { background: var(--ui-ink); color: white; border-radius: 50%; }
+.leave-day-blank { background: var(--ui-soft); }
+.leave-day-preview { display: grid; gap: 5px; font-size: 12px; min-width: 0; width: 100%; }
+.leave-day-preview > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.leave-day-preview small { display: block; font-size: 11px; color: var(--ui-muted); }
+.leave-day-count { margin-top: auto; color: #725900; font-size: 11px; font-weight: 600; }
+.leave-holiday { color: #675082; font-size: 11px; overflow-wrap: anywhere; }
+.leave-request-section { padding: 0 24px 24px; }
+.leave-request-heading { padding-inline: 0; }
+.leave-request-list > li { display: flex; align-items: center; gap: 20px; padding: 18px 0; border-top: 1px solid var(--ui-line); }
+.leave-request-person { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.leave-request-person strong { font-size: 14px; overflow-wrap: anywhere; }
+.leave-request-person p, .leave-request-dates { font-size: 13px; color: var(--ui-muted); }
+.leave-request-dates small { display: block; margin-top: 4px; }
+@media (max-width: 760px) {
+ .ui-control, .input { font-size: 16px; }
+ .ui-kpi-card { flex-wrap: wrap; padding: 14px; gap: 10px; }
+ .ui-heading-title { align-items: flex-start; }
+ .ui-button { white-space: normal; }
+ .ui-account-card { padding: 26px 22px; }
+ .leave-calendar-heading, .leave-calendar-filters { padding: 16px; }
+ .leave-calendar-filters { padding-top: 0; }
+ .leave-calendar-search { min-width: 100%; }
+ .leave-day { min-height: 72px; padding: 5px; gap: 3px; }
+ .leave-day-preview, .leave-count-label, .leave-holiday { display: none; }
+ .leave-day-count { background: #fff0a6; border-radius: 4px; padding: 2px 6px; align-self: flex-start; }
+ .leave-request-section { padding: 0 16px 16px; }
+ .leave-request-list > li { flex-wrap: wrap; gap: 10px; }
+ .leave-request-person { flex-basis: 100%; }
+ .leave-request-dates { flex: 1; }
+}

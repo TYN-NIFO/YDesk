@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import { roleConfig } from '@/lib/roles';
 import { RootState } from '../../lib/store';
 
 export default function Dashboard() {
@@ -11,24 +12,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      // Redirect to appropriate dashboard based on user role
-      switch (user.role) {
-        case 'executive':
-          router.push('/executive');
-          break;
-        case 'employee':
-        case 'supervisor':
-          router.push('/employee');
-          break;
-        case 'finance_manager':
-          router.push('/finance');
-          break;
-        case 'admin':
-          router.push('/admin');
-          break;
-        default:
-          router.push('/employee');
-      }
+      router.replace(roleConfig(user.role).home);
     }
   }, [user, router]);
 
