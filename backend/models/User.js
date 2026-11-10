@@ -87,6 +87,18 @@ const userSchema = new mongoose.Schema({
     enum: ['handler', 'summary', null],
     default: null
   },
+  // Administrative delivery override; changing it does not change login identity.
+  weeklySummaryEmail: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    default: '',
+    maxlength: 254,
+    validate: {
+      validator: value => !value || /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value),
+      message: 'A valid weekly summary email is required'
+    }
+  },
   // Password reset fields
   resetPasswordToken: {
     type: String

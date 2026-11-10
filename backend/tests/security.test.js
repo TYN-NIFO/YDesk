@@ -688,3 +688,51 @@ test('adjacent reporting windows count boundary submissions and progress exactly
   assert.ok(!first.text.includes('Submitted → Resolved'));
   assert.ok(second.text.includes('Submitted → Resolved'));
 });
+
+test('weekly delivery can use another mailbox without changing account identity or sending twice', async () => {
+  await withWeeklyReviewer(async () => {
+    const original = await User.findById(admin._id).lean();
+    const target = 'weekly-target@example.test';
+    await User.updateOne({ _id: admin._id }, { $set: { weeklySummaryEmail: target } }, { runValidators: true });
+    process.env.WEEKLY_SUMMARY_RECIPIENTS = target.toUpperCase();
+    const messages = [];
+    const now = new Date('2030-03-08T12:30:00Z');
+    try {
+      const countBefore = await WeeklySummaryDelivery.countDocuments();
+      const preview = await sendWeeklyFeedbackSummary({ now });
+      assert.equal(preview.recipients, 1);
+      assert.equal(preview.dryRun, true);
+      assert.equal(await WeeklySummaryDelivery.countDocuments(), countBefore);
+      const options = { now, dryRun: false, send: async message => { messages.push(message); } };
+      assert.equal((await sendWeeklyFeedbackSummary(options)).sent, 1);
+      assert.equal(messages[0].to, target);
+      assert.ok(messages[0].text.includes('Feedback received this week'));
+      await User.updateOne({ _id: admin._id }, { $set: { weeklySummaryEmail: 'another-target@example.test' } });
+      process.env.WEEKLY_SUMMARY_RECIPIENTS = 'another-target@example.test';
+      assert.equal((await sendWeeklyFeedbackSummary(options)).skipped, 1);
+      assert.equal(messages.length, 1);
+      const after = await User.findById(admin._id).lean();
+      assert.equal(after.email, original.email);
+      assert.equal(after.passwordHash, original.passwordHash);
+      assert.equal(after.role, original.role);
+    } finally {
+      await User.updateOne({ _id: admin._id }, { $unset: { weeklySummaryEmail: 1 } });
+    }
+  });
+});
+
+test('a weekly mailbox override never grants feedback access and rejects invalid addresses', async () => {
+  const invalid = new User({ weeklySummaryEmail: 'one@example.test,two@example.test' });
+  assert.ok(invalid.validateSync().errors.weeklySummaryEmail);
+  await withWeeklyReviewer(async () => {
+    const original = await User.findById(other._id).lean();
+    await User.updateOne({ _id: other._id }, { $set: { isActive: true, grievanceAccess: null, weeklySummaryEmail: 'unprivileged@example.test' } });
+    process.env.WEEKLY_SUMMARY_RECIPIENTS = 'unprivileged@example.test';
+    try {
+      const result = await sendWeeklyFeedbackSummary({ now: new Date('2030-03-15T12:30:00Z') });
+      assert.equal(result.recipients, 0);
+    } finally {
+      await User.updateOne({ _id: other._id }, { $set: { isActive: original.isActive, grievanceAccess: original.grievanceAccess }, $unset: { weeklySummaryEmail: 1 } });
+    }
+  });
+});
