@@ -6,7 +6,11 @@ The portal is available at `/feedback`; `/grievances` redirects there and the le
 
 All five app roles can submit and see their own feedback. Explicit handler access permits review of other people's submissions; handlers cannot act on their own. Explicit summary access permits aggregate reports, not other people's details or attachments. Roles alone do not grant portal-wide access. The disposable local preview assigns handler access to admin/finance and summary access to executives so each view can be tested; employee and supervisor accounts see only their own submissions.
 
-Weekly email automation uses Resend's HTTPS API from GitHub Actions and is opt-in and disabled by default. Reports run on Fridays at 18:00 Asia/Kolkata, with retry runs at 18:30 and 19:00. Password recovery and feedback notifications also use Resend when its key is configured. See `backend/EMAIL_SETUP.md` for sender setup, recipient permissions, reporting windows, dry-run commands, and deployment requirements.
+Weekly email automation is triggered by GitHub Actions through an authenticated Render job endpoint, which uses Resend over HTTPS. It is opt-in and disabled by default. Reports run on Fridays at 18:00 Asia/Kolkata, with retry runs at 18:30 and 19:00. Password recovery and feedback notifications also use Resend when its key is configured. See `backend/EMAIL_SETUP.md` for sender setup, recipient permissions, reporting windows, dry-run commands, and deployment requirements.
+
+## Google Workspace sign-in
+
+Google sign-in matches verified company Workspace identities to existing active YDesk accounts and preserves their roles, passwords, and feedback access. It does not automatically create users. See [Google SSO setup](backend/GOOGLE_SSO_SETUP.md) for Google Cloud settings, Render credentials, and approved identity aliases. Password sign-in remains available.
 
 ## Local verification and preview
 

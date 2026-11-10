@@ -99,6 +99,9 @@ const userSchema = new mongoose.Schema({
       message: 'A valid weekly summary email is required'
     }
   },
+  googleSubject: { type: String, minlength: 1, maxlength: 255, unique: true, sparse: true, select: false },
+  // An administrator can map an approved Workspace address to this existing login.
+  googleLoginEmail: { type: String, trim: true, lowercase: true, maxlength: 254, match: /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/, sparse: true, unique: true },
   // Password reset fields
   resetPasswordToken: {
     type: String
@@ -133,6 +136,7 @@ userSchema.methods.toPublicJSON = function() {
   delete user.resetPasswordToken;
   delete user.resetPasswordExpires;
   delete user.tokenVersion;
+  delete user.googleSubject;
   return user;
 };
 

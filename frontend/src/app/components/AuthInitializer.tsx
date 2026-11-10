@@ -11,6 +11,7 @@ export function AuthInitializer({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
     dispatch(loadStoredAuth());
+    if (window.location.pathname === '/auth/google') { setReady(true); return; }
     const initialize = async () => {
       if (!authService.getAccessToken()) await authService.refreshToken();
       else authService.setupAutoRefresh();

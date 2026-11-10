@@ -184,6 +184,11 @@ app.use(express.urlencoded({
 app.use(cookieParser(process.env.COOKIE_SECRET || 'default-secret'));
 
 // Logging middleware
+morgan.token('url', req => {
+  const url = req.originalUrl || req.url || '';
+  const pathname = url.split('?')[0];
+  return pathname.toLowerCase().startsWith('/api/auth/google/') ? pathname : url;
+});
 if (process.env.NODE_ENV === 'production') {
   app.use(morgan('combined'));
 } else {

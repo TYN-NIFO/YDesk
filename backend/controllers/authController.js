@@ -107,6 +107,21 @@ const createAuditLog = async (userId, action, resource, details = {}) => {
   }
 };
 
+// Password and Google logins share the same refresh-token and revocation rules.
+const createWebSession = async (user, req, res, action = 'TOKEN_AUTH') => {
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken();
+  await RefreshToken.create({
+    userId: user._id, tokenHash: RefreshToken.hashToken(refreshToken),
+    jti: uuidv4(), family: uuidv4(), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  });
+  user.lastLoginAt = new Date();
+  await user.save();
+  setRefreshTokenCookie(res, refreshToken);
+  await createAuditLog(user._id, action, 'AUTH', { ipAddress: req.ip, userAgent: req.get('User-Agent') });
+  return { message: 'Authentication successful', user: user.toPublicJSON(), accessToken };
+};
+
 // Token-based authentication (replaces login)
 const token = async (req, res) => {
   try {
@@ -137,39 +152,7 @@ const token = async (req, res) => {
       });
     }
 
-    // Generate tokens
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken();
-    const jti = uuidv4();
-    const family = uuidv4();
-
-    // Store refresh token
-    await RefreshToken.create({
-      userId: user._id,
-      tokenHash: RefreshToken.hashToken(refreshToken),
-      jti,
-      family,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    });
-
-    // Update last login
-    user.lastLoginAt = new Date();
-    await user.save();
-
-    // Set refresh token cookie
-    setRefreshTokenCookie(res, refreshToken);
-
-    // Create audit log
-    await createAuditLog(user._id, 'TOKEN_AUTH', 'AUTH', { 
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-
-    res.json({
-      message: 'Authentication successful',
-      user: user.toPublicJSON(),
-      accessToken
-    });
+    res.json(await createWebSession(user, req, res));
   } catch (error) {
     console.error('Token authentication error:', error);
     res.status(500).json({ error: 'Authentication failed' });
@@ -595,5 +578,6 @@ export {
   revokeUserSessions,
   uploadAvatar,
   createAuditLog,
+  createWebSession,
   generateAccessToken
 };
