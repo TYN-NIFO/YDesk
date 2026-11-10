@@ -6,7 +6,8 @@ import LeaveApprovalModal from './LeaveApprovalModal';
 import LoadingSpinner from './LoadingSpinner';
 
 export default function PendingLeaveApprovals() {
-  const { data, isLoading, error, refetch } = useGetPendingLeavesQuery({ limit: 200 });
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error, refetch } = useGetPendingLeavesQuery({ page, limit: 20 });
   const [selectedLeave, setSelectedLeave] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -102,6 +103,7 @@ export default function PendingLeaveApprovals() {
 
   return (
     <div className="space-y-4">
+<div className="flex flex-wrap justify-between items-center gap-3 py-4" aria-label="Request pages"><span className="text-sm text-gray-600">Page {page} ? {data?.pagination?.total || 0} requests</span><div className="flex gap-2"><button className="ui-button ui-button-secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button><button className="ui-button ui-button-secondary" disabled={page >= (data?.pagination?.pages || 1)} onClick={() => setPage(page + 1)}>Next</button></div></div>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">
           Pending Leave Approvals ({leaves.length})

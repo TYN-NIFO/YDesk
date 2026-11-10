@@ -1,13 +1,13 @@
 'use client';
 
 import AuthWrapper from '../components/AuthWrapper';
-import LeaveApprovals from '../components/LeaveApprovals';
+import PendingLeaveApprovals from '../components/PendingLeaveApprovals';
 
 export default function ApprovalsPage() {
   return (
-    <AuthWrapper allowedRoles={['supervisor', 'finance_manager', 'executive', 'admin']}>
+    <AuthWrapper allowedRoles={['executive']}>
       <div className="max-w-6xl mx-auto p-6">
-        <LeaveApprovals />
+        <PendingLeaveApprovals />
       </div>
     </AuthWrapper>
   );

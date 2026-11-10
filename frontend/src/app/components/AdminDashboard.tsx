@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHeading } from './ui/WorkspaceUI';
+
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
@@ -338,7 +340,7 @@ export default function AdminDashboard() {
               <div className="text-center py-8">
                 <Calendar className="h-12 w-12 text-blue-500 mx-auto mb-4" />
                 <p className="text-gray-600 mb-2">Leave Dashboard</p>
-                <p className="text-sm text-gray-400">View comprehensive leave analytics and management</p>
+                <p className="text-sm text-gray-400">View team availability and manage your own requests</p>
                 <button
                   onClick={() => router.push('/leave-dashboard')}
                   className="ui-button ui-button-primary mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
@@ -360,43 +362,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="ui-panel bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-2">
-              <Shield className="h-8 w-8 text-purple-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-600">Welcome back, {user?.name}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleSubmitClaim}
-                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Submit Claim
-              </button>
-              <button
-                onClick={handleLogout}
-                className="ui-button ui-button-secondary flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div className="ui-page !pb-0"><PageHeading title="Administration" description="Manage people, expense policies and workspace settings." icon={Shield} actions={<><button className="ui-button ui-button-primary" onClick={handleSubmitClaim}><Plus size={16} />New expense</button></>} /></div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex gap-6 overflow-x-auto whitespace-nowrap">
             {tabs.map((tab: any) => {
               const Icon = tab.icon;
               return (

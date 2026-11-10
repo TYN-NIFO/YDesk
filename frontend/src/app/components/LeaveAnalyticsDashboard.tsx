@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useGetLeaveAnalyticsQuery, useGetTodayLeavesQuery, useGetLeavesByDateRangeQuery, useGetHolidaysQuery } from '@/lib/api';
 import LoadingSpinner from './LoadingSpinner';
+import TeamLeaveCalendar from './TeamLeaveCalendar';
 import BulkLeaveUpload from './BulkLeaveUpload';
 import { BarChart3, Briefcase, Calendar, ChevronLeft, ChevronRight, Clock, AlertCircle, Plane, RefreshCw, Users, List } from 'lucide-react';
 
@@ -74,7 +75,7 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
   const { data: holidaysData, isLoading: holidaysLoading } = useGetHolidaysQuery({ year: calendarYear });
 
   // Check if user has access to analytics
-  const hasAnalyticsAccess = userRole === 'executive' || userRole === 'admin';
+  const hasAnalyticsAccess = userRole === 'executive';
 
   if (!hasAnalyticsAccess) {
     return (
@@ -325,219 +326,16 @@ export default function LeaveAnalyticsDashboard({ userRole, userEmail }: Analyti
     );
   };
 
-  const renderCalendar = () => {
-    // Generate calendar data for the selected month/year
-    const month = selectedMonth || new Date().getMonth() + 1;
-    const year = selectedYear;
-    const firstDay = new Date(year, month - 1, 1);
-    const lastDay = new Date(year, month, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
-
-    const calendarDays = [];
-    const currentDate = new Date(startDate);
-
-    while (currentDate <= lastDay || calendarDays.length < 42) { // 6 weeks * 7 days
-      calendarDays.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    const getLeaveDataForDate = (date: Date) => {
-      if (!leaveData?.leaves) return [];
-
-      const localDateStr = toLocalYmd(date);
-      return leaveData.leaves.filter((leave: any) => {
-        const leaveStartStr = (leave.startDate || '').split('T')[0];
-        const leaveEndStr = (leave.endDate || leave.startDate || '').split('T')[0];
-        return localDateStr >= leaveStartStr && localDateStr <= leaveEndStr;
-      }).map((leave: any) => ({
-        date: leave.startDate,
-        employee: leave.employee?.name || leave.employeeEmail,
-        email: leave.employeeEmail,
-        type: leave.leaveType,
-        reason: leave.reason,
-        hours: leave.hours || 8
-      }));
-    };
-
-    const getHolidayDataForDate = (date: Date) => {
-      if (!holidaysData) return [];
-
-      const localDateStr = toLocalYmd(date);
-      return holidaysData.filter((holiday: any) => {
-        const holidayDateStr = (holiday.date || '').split('T')[0];
-        return holidayDateStr === localDateStr;
-      }).map((holiday: any) => ({
-        date: holiday.date,
-        name: holiday.name,
-        isFlexi: holiday.isFlexi,
-        isHoliday: true
-      }));
-    };
-
-    const getLeaveTypeColor = (type: string) => {
-      switch (type) {
-        case 'Planned Leave': return 'bg-green-100 text-green-800';
-        case 'Unplanned Leave': return 'bg-red-100 text-red-800';
-        case 'WFH': return 'bg-blue-100 text-blue-800';
-        case 'Permission': return 'bg-yellow-100 text-yellow-800';
-        case 'Business Trip': return 'bg-purple-100 text-purple-800';
-        case 'OD': return 'bg-indigo-100 text-indigo-800';
-        case 'Flexi': return 'bg-pink-100 text-pink-800';
-        default: return 'bg-gray-100 text-gray-800';
-      }
-    };
-
-    return (
-      <div className="ui-panel bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Leave Calendar</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} leave calendar
-          </p>
-          {leaveLoading && (
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
-              <p className="text-xs text-blue-800">Loading leave data...</p>
-            </div>
-          )}
-        </div>
-
-        <div className="px-4 pb-4">
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {/* Day Headers */}
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="p-2 text-center text-sm font-medium text-gray-500 bg-gray-50">
-                {day}
-              </div>
-            ))}
-
-            {/* Calendar Days */}
-            {calendarDays.map((date, index) => {
-              const isCurrentMonth = date.getMonth() === month - 1;
-              const isToday = date.toDateString() === new Date().toDateString();
-              const leaveData = getLeaveDataForDate(date);
-              const holidayData = getHolidayDataForDate(date);
-
-              const holiday = holidayData.length > 0 ? holidayData[0] : null;
-              let cellBg = isCurrentMonth ? 'bg-white' : 'bg-gray-50';
-              if (holiday) {
-                cellBg = holiday.isFlexi ? 'bg-pink-50 border-pink-200' : 'bg-indigo-50 border-indigo-200';
-              }
-
-              return (
-                <div
-                  key={index}
-                  className={`min-h-[80px] p-1 border ${cellBg} ${isToday ? 'ring-2 ring-blue-500' : 'border-gray-200'}`}
-                >
-                  <div className={`text-xs p-1 flex justify-between items-start ${isCurrentMonth ? (holiday ? 'text-gray-900 font-medium' : 'text-gray-900') : 'text-gray-400'} ${isToday ? 'font-bold' : ''}`}>
-                    {holiday ? (
-                      <div className={`font-semibold truncate ${holiday.isFlexi ? 'text-pink-800' : 'text-indigo-800'}`}>
-                        {holiday.name}
-                      </div>
-                    ) : <div />}
-                    <span>{date.getDate()}</span>
-                  </div>
-                  {holiday && holiday.isFlexi && (
-                    <div className="px-1 mb-1">
-                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-pink-100 text-pink-800 shadow-sm">
-                        Flexi
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Leave Indicators */}
-                  <div className="space-y-1">
-                    {leaveData.map((leave: any, leaveIndex: number) => (
-                      <div
-                        key={leaveIndex}
-                        className={`text-xs p-1 rounded truncate ${getLeaveTypeColor(leave.type)}`}
-                        title={`${leave.employee} - ${leave.type}${leave.reason ? ` - ${leave.reason}` : ''}`}
-                      >
-                        <div className="font-medium truncate">{leave.employee.split(' ')[0]}</div>
-                        <div className="text-xs opacity-75">{leave.type}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-green-100 border border-green-300 rounded"></div>
-              <span className="text-xs text-gray-600">Planned Leave</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-100 border border-red-300 rounded"></div>
-              <span className="text-xs text-gray-600">Unplanned Leave</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
-              <span className="text-xs text-gray-600">WFH</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded"></div>
-              <span className="text-xs text-gray-600">Permission</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-purple-100 border border-purple-300 rounded"></div>
-              <span className="text-xs text-gray-600">Business Trip</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-indigo-100 border border-indigo-300 rounded"></div>
-              <span className="text-xs text-gray-600">OD</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-pink-100 border border-pink-300 rounded"></div>
-              <span className="text-xs text-gray-600">Flexi</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-indigo-50 border border-indigo-200 rounded"></div>
-              <span className="text-xs text-gray-600 font-medium">Holiday</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-pink-50 border border-pink-200 rounded"></div>
-              <span className="text-xs text-gray-600 font-medium">Flexi Holiday</span>
-            </div>
-          </div>
-
-          {/* Leave Summary for Selected Period */}
-          {leaveData?.leaves && leaveData.leaves.length > 0 && (
-            <div className="ui-detail-summary mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">
-                Leave Summary for {new Date(year, month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {leaveData.leaves.slice(0, 9).map((leave: any, index: number) => (
-                  <div key={index} className="text-xs bg-white p-2 rounded border">
-                    <div className="font-medium text-gray-900">{leave.employee?.name || leave.employeeEmail}</div>
-                    <div className="text-gray-600">{leave.leaveType}</div>
-                    <div className="text-xs text-gray-500">{leave.startDate}</div>
-                    <div className="text-xs text-gray-500 italic">{leave.reason}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const renderCalendar = () => <TeamLeaveCalendar year={calendarYear} month={calendarMonth} leaves={leaveData?.leaves || []} holidays={holidaysData || []} isLoading={leaveLoading || holidaysLoading} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} />;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Leave Analytics Dashboard</h2>
-        <div className="mt-4 sm:mt-0 flex items-center space-x-2">
+        <div className="mt-4 sm:mt-0 flex flex-wrap items-center gap-2">
           {/* Bulk Upload Button */}
-          <BulkLeaveUpload onUploadComplete={() => {
-            // Refresh the analytics data
-            window.location.reload();
-          }} />
+
 
           <BulkLeaveUpload onUploadComplete={() => {
             // Refresh the analytics data

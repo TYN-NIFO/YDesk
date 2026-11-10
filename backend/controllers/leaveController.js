@@ -1,3 +1,4 @@
+import { calendarDayStart, calendarPeriod, overlapQuery } from '../services/leaveDates.js';
 import Leave from '../models/Leave.js';
 import User from '../models/User.js';
 import AuditLog from '../models/AuditLog.js';
@@ -112,17 +113,10 @@ const getUserLeaves = async (req, res) => {
     // Build query
     const query = { employeeId: userId };
 
-    // Date filters
+    // Include requests that cross a month or year boundary.
     if (year) {
-      const startOfYear = new Date(parseInt(year), 0, 1);
-      const endOfYear = new Date(parseInt(year) + 1, 0, 1);
-      query.startDate = { $gte: startOfYear, $lt: endOfYear };
-    }
-
-    if (month && year) {
-      const startOfMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
-      const endOfMonth = new Date(parseInt(year), parseInt(month), 1);
-      query.startDate = { $gte: startOfMonth, $lt: endOfMonth };
+      const period = calendarPeriod(Number(year), month ? Number(month) : undefined);
+      Object.assign(query, overlapQuery(period.start, period.end));
     }
 
     if (status) {
@@ -635,55 +629,28 @@ const getLeavesByDateRange = async (req, res) => {
       });
     }
 
-    // Parse dates
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: 'Invalid date format'
-      });
+    const start = calendarDayStart(startDate);
+    const lastDay = calendarDayStart(endDate);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(lastDay.getTime()) || lastDay < start) {
+      return res.status(400).json({ error: 'Use valid YYYY-MM-DD dates with end date on or after start date' });
     }
-
-    if (end < start) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: 'End date cannot be before start date'
-      });
-    }
-
-    // Build the query
-    const query = {
-      $or: [
-        // Leave starts within the range
-        { startDate: { $gte: start, $lte: end } },
-        // Leave ends within the range
-        { endDate: { $gte: start, $lte: end } },
-        // Leave spans the entire range
-        { startDate: { $lte: start }, endDate: { $gte: end } }
-      ]
-    };
-
-    // Data Isolation: Changed so that all authenticated employees can see others' leaves on their calendar
-    // if (req.user && req.user.role !== 'executive') {
-    //   query.employeeId = req.user._id;
-    // }
+    const end = new Date(lastDay.getTime() + 86400000);
+    const query = overlapQuery(start, end);
 
     // Find leaves that overlap with the date range
     // Show all leaves (submitted, approved, rejected) for calendar visibility
     const leaves = await Leave.find(query).populate('employeeId', 'name email department');
 
     const response = {
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0],
+      startDate,
+      endDate,
       leaves: leaves.map(leave => ({
         id: leave._id,
-        startDate: leave.startDate.toISOString().split('T')[0],
-        endDate: leave.endDate.toISOString().split('T')[0],
+        startDate: leave.startDate.toISOString(),
+        endDate: leave.endDate.toISOString(),
         leaveType: leave.type,
         status: leave.status,
-        reason: leave.reason,
+        reason: req.user.role === 'executive' || String(leave.employeeId._id) === String(req.user._id) ? leave.reason : undefined,
         hours: leave.hours,
         isFullDay: leave.isFullDay,
         employee: {

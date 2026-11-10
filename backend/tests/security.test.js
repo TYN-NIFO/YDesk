@@ -736,3 +736,24 @@ test('a weekly mailbox override never grants feedback access and rejects invalid
     }
   });
 });
+
+
+test('calendar and personal lists retain India dates and month-spanning requests', async () => {
+  const created = await request('/api/leaves', { user: employee, method: 'POST', body: {
+    type: 'WFH', startDate: '2026-10-31T00:00:00+05:30', endDate: '2026-11-02T00:00:00+05:30', reason: 'Private attendance reason'
+  } });
+  assert.equal(created.status, 201);
+  const createdLeave = (await created.json()).leave;
+  const personal = await (await request('/api/leaves?year=2026&month=11', { user: employee })).json();
+  assert.ok(personal.leaves.some(leave => leave._id === createdLeave._id));
+  const calendar = await (await request('/api/leaves/by-date-range?startDate=2026-11-01&endDate=2026-11-30', { user: employee })).json();
+  const match = calendar.leaves.find(leave => leave.id === createdLeave._id);
+  assert.ok(match);
+  assert.equal(match.startDate, '2026-10-30T18:30:00.000Z');
+  assert.equal(match.reason, 'Private attendance reason');
+  const colleague = await (await request('/api/leaves/by-date-range?startDate=2026-11-01&endDate=2026-11-30', { user: other })).json();
+  assert.equal(colleague.leaves.find(leave => leave.id === createdLeave._id).reason, undefined);
+  const approver = await (await request('/api/leaves/by-date-range?startDate=2026-11-01&endDate=2026-11-30', { user: executive })).json();
+  assert.equal(approver.leaves.find(leave => leave.id === createdLeave._id).reason, 'Private attendance reason');
+  assert.equal((await request('/api/leaves/by-date-range?startDate=2026-02-30&endDate=2026-03-01', { user: employee })).status, 400);
+});

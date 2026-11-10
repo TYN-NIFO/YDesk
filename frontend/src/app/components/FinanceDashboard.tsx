@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHeading } from './ui/WorkspaceUI';
+
 import { useState, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
@@ -201,65 +203,12 @@ export default function FinanceDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <CreditCard className="h-8 w-8 text-purple-600" />
-              <h1 className="ml-3 text-2xl font-bold text-gray-900">
-                Finance Manager Dashboard
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => handleDownloadClaims('submitted')}
-                className="flex items-center px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Submitted
-              </button>
-              <button
-                onClick={() => handleDownloadClaims('finance_approved')}
-                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Finance Approved
-              </button>
-              <button
-                onClick={() => handleDownloadClaims()}
-                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download All
-              </button>
-              <button
-                onClick={handleSubmitClaim}
-                className="ui-button ui-button-primary flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Submit Claim
-              </button>
-              <div className="flex items-center text-sm text-gray-700">
-                <User className="h-4 w-4 mr-2" />
-                {user?.name}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center text-sm text-gray-700 hover:text-gray-900"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <div className="ui-page !pb-0"><PageHeading title="Finance workspace" description="Review expenses, manage payments and export reports." icon={CreditCard} actions={<><button className="ui-button ui-button-secondary" onClick={() => handleDownloadClaims('submitted')}><Download size={16} />Export pending</button><button className="ui-button ui-button-secondary" onClick={() => handleDownloadClaims('finance_approved')}><Download size={16} />Export approved</button><button className="ui-button ui-button-secondary" onClick={() => handleDownloadClaims()}><Download size={16} />Export all</button><button className="ui-button ui-button-primary" onClick={handleSubmitClaim}><Plus size={16} />New expense</button></>} /></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation Tabs */}
         <div className="bg-white border-b border-gray-200 mb-8">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex gap-6 overflow-x-auto whitespace-nowrap">
             {[
               { key: 'claims' as const, label: 'Claims', icon: FileText },
               { key: 'travel-guidelines' as const, label: 'Travel Guidelines', icon: Plane },
@@ -368,7 +317,7 @@ export default function FinanceDashboard() {
               <div className="text-center py-8">
                 <Calendar className="h-12 w-12 text-blue-500 mx-auto mb-4" />
                 <p className="text-gray-600 mb-2">Leave Dashboard</p>
-                <p className="text-sm text-gray-400">View comprehensive leave analytics and management</p>
+                <p className="text-sm text-gray-400">View team availability and manage your own requests</p>
                 <button
                   onClick={() => router.push('/leave-dashboard')}
                   className="ui-button ui-button-primary mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
