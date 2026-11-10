@@ -19,6 +19,7 @@ import userRoutes from './routes/userRoutes.js';
 import leaveRoutes from './routes/leaveRoutes.js';
 import holidayRoutes from './routes/holidayRoutes.js';
 import grievanceRoutes from './routes/grievanceRoutes.js';
+import { createWeeklySummaryJobRouter } from './routes/weeklySummaryJobRoutes.js';
 import { getEmailService, mailIsConfigured } from './services/mailService.js';
 
 // Import Swagger
@@ -226,6 +227,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/jobs', createWeeklySummaryJobRouter());
 app.use('/api/auth', authRoutes);
 app.get('/api/claims/download-proxy', auth, downloadProxy);
 app.use('/api/claims', claimRoutes);
