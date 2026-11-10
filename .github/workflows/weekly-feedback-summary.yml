@@ -23,32 +23,15 @@ jobs:
   summary:
     if: github.event_name == 'workflow_dispatch' || vars.WEEKLY_SUMMARY_ENABLED == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci --omit=dev
       - name: Generate weekly feedback summary
         env:
-          NODE_ENV: production
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          SENDGRID_API_KEY: ''
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RESEND_FROM: ${{ vars.RESEND_FROM }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
-          WEEKLY_SUMMARY_ENABLED: ${{ vars.WEEKLY_SUMMARY_ENABLED }}
-          WEEKLY_SUMMARY_RECIPIENTS: ${{ vars.WEEKLY_SUMMARY_RECIPIENTS }}
+          WEEKLY_SUMMARY_API_URL: ${{ vars.WEEKLY_SUMMARY_API_URL }}
+          WEEKLY_SUMMARY_JOB_TOKEN: ${{ secrets.WEEKLY_SUMMARY_JOB_TOKEN }}
           SEND_EMAIL: ${{ github.event_name == 'schedule' || inputs.send }}
-        run: |
-          if [ "$SEND_EMAIL" = "true" ]; then
-            node scripts/weekly-feedback-summary.js --send
-          else
-            node scripts/weekly-feedback-summary.js
-          fi
+        run: node .github/scripts/run-weekly-summary.mjs
